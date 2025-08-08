@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(lsof:*)",
+      "Bash(npm run build:*)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(npm install)",
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Bash(npm install:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(npx next:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(yarn install)",
+      "Bash(sudo npm install --force)",
+      "Bash(open http://localhost:3000)",
+      "Bash(PORT=3001 npm run dev)",
+      "WebFetch(domain:localhost)",
+      "Bash(kill:*)",
+      "Bash(PORT=3000 npm run dev)",
+      "Bash(PORT=8080 npm run dev)",
+      "Bash(open:*)",
+      "Bash(tar:*)",
+      "Bash(ls:*)",
+      "Bash(head:*)",
+      "Bash(npx tsc:*)"
+    ],
+    "deny": []
+  }
+}

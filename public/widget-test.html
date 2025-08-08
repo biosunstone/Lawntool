@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test Page</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin: 20px 0;
+        }
+        .test-info {
+            background: #f0f4f8;
+            border-left: 4px solid #00A651;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #00A651;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #008840;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.secondary:hover {
+            background: #5a6268;
+        }
+        .scroll-content {
+            height: 150vh;
+            background: linear-gradient(to bottom, #f0f4f8, #e2e8f0);
+            padding: 20px;
+            margin-top: 40px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Sunstone Widget Test Page</h1>
+        <p>This page demonstrates the Sunstone Property Measurement Widget integration.</p>
+        
+        <div class="test-info">
+            <strong>Widget Configuration:</strong>
+            <ul>
+                <li>Business ID: Test Business (You'll need to replace with actual ID)</li>
+                <li>Position: Bottom Right</li>
+                <li>Trigger: Click on floating button</li>
+                <li>Auto-open: Disabled</li>
+            </ul>
+        </div>
+
+        <h2>Widget Controls</h2>
+        <p>Use these buttons to control the widget programmatically:</p>
+        
+        <div class="button-group">
+            <button onclick="ssWidget('open')">Open Widget</button>
+            <button onclick="ssWidget('close')">Close Widget</button>
+            <button onclick="ssWidget('toggle')">Toggle Widget</button>
+            <button class="secondary" onclick="ssWidget('destroy')">Destroy Widget</button>
+        </div>
+
+        <h2>Test Different Triggers</h2>
+        <p>Modify the initialization script to test different trigger behaviors:</p>
+        <ul>
+            <li><strong>pageLoad:</strong> Opens automatically when page loads</li>
+            <li><strong>scroll:</strong> Opens when user scrolls to 50% of page</li>
+            <li><strong>exitIntent:</strong> Opens when user moves mouse to leave page</li>
+            <li><strong>timer:</strong> Opens after specified delay</li>
+            <li><strong>click:</strong> Opens when user clicks the floating button (default)</li>
+        </ul>
+
+        <div class="scroll-content">
+            <h3>Scroll Test Area</h3>
+            <p>This area creates scrollable content to test scroll-triggered widget opening.</p>
+            <p>Keep scrolling down to trigger the widget if scroll trigger is enabled...</p>
+            <div style="margin-top: 50vh;">
+                <p>50% scroll point - Widget should trigger here if scroll trigger is set</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sunstone Widget Integration -->
+    <script src="http://localhost:3000/widget/embed.js"></script>
+    <script>
+        // Initialize widget with configuration
+        // Replace 'YOUR_BUSINESS_ID' with an actual business ID from your database
+        ssWidget('init', {
+            businessId: '67389a8e2e6f5e2c8c9a5f2e', // You need to replace this with a real business ID
+            position: 'bottom-right',
+            autoOpen: false,
+            delay: 0
+        });
+
+        // Optional: Add callback handler
+        window.ssWidgetCallback = function(event, data) {
+            console.log('Widget event:', event, data);
+            
+            switch(event) {
+                case 'open':
+                    console.log('Widget opened');
+                    break;
+                case 'close':
+                    console.log('Widget closed');
+                    break;
+                case 'complete':
+                    console.log('Measurement completed:', data);
+                    alert('Thank you! Your quote has been generated.');
+                    break;
+            }
+        };
+    </script>
+</body>
+</html>
