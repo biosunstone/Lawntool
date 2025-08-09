@@ -139,6 +139,21 @@ const businessSchema = new Schema<IBusiness>({
     isActive: { type: Boolean, default: true },
     domains: [String], // Allowed domains for embedding
   },
+  
+  // Zapier Integration Settings (Optional - disabled by default)
+  zapierSettings: {
+    enabled: { type: Boolean, default: false },
+    apiKey: { type: String, select: false }, // Hidden by default
+    tier: { 
+      type: String, 
+      enum: ['none', 'basic', 'pro', 'enterprise'],
+      default: 'none'
+    },
+    configId: {
+      type: Schema.Types.ObjectId,
+      ref: 'ZapierConfig'
+    }
+  }
 }, {
   timestamps: true,
 })

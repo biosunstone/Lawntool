@@ -1,0 +1,32 @@
+<\!DOCTYPE html>
+<html>
+<head>
+    <title>Test Google Maps Autocomplete</title>
+    <script>
+        function initAutocomplete() {
+            const input = document.getElementById('address-input');
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                types: ['address'],
+                componentRestrictions: { country: ['us', 'ca'] }
+            });
+            
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                console.log('Selected:', place.formatted_address);
+                document.getElementById('result').innerText = place.formatted_address || 'No address selected';
+            });
+            
+            console.log('Autocomplete initialized\!');
+        }
+    </script>
+</head>
+<body>
+    <h1>Google Maps Autocomplete Test</h1>
+    <input id="address-input" type="text" placeholder="Start typing an address..." style="width: 400px; padding: 10px;">
+    <div id="result" style="margin-top: 20px; font-weight: bold;"></div>
+    
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDgPKdvqWJBWJQYIvuTyW9fRmX23Nn5Qkw&libraries=places&callback=initAutocomplete">
+    </script>
+</body>
+</html>

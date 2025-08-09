@@ -9,6 +9,7 @@ import Business from '@/models/Business'
 import { sendQuoteEmail } from '@/lib/saas/email'
 import generateQuoteNumber from '@/lib/saas/quoteNumberGenerator'
 import { calculatePricing } from '@/lib/saas/pricing-calculator'
+import { safeEmitZapierEvent, ZAPIER_EVENTS } from '@/lib/zapier/eventEmitter'
 
 // GET - Fetch quotes
 export async function GET(request: NextRequest) {
@@ -217,7 +218,48 @@ export async function POST(request: NextRequest) {
       sendQuoteEmail(quote, 'created').catch(error => {
         console.error('Failed to send quote email:', error)
       })
+      
+      // Emit Zapier event for quote sent
+      safeEmitZapierEvent(businessId, ZAPIER_EVENTS.QUOTE_SENT, {
+        quoteId: quote._id.toString(),
+        quoteNumber: quote.quoteNumber,
+        customer: {
+          id: customer._id.toString(),
+          name: customer.name,
+          email: customer.email,
+          phone: customer.phone
+        },
+        total: quote.total,
+        services: quote.services,
+        validUntil: quote.validUntil
+      })
     }
+    
+    // Emit Zapier event for quote created
+    safeEmitZapierEvent(businessId, ZAPIER_EVENTS.QUOTE_CREATED, {
+      quoteId: quote._id.toString(),
+      quoteNumber: quote.quoteNumber,
+      customer: {
+        id: customer._id.toString(),
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone
+      },
+      measurement: {
+        id: measurementId,
+        address: measurement.address,
+        totalArea
+      },
+      total: quote.total,
+      subtotal: quote.subtotal,
+      tax: quote.tax,
+      services: quote.services,
+      validUntil: quote.validUntil,
+      status: quote.status
+    }, {
+      userId,
+      source: 'api'
+    })
 
     return NextResponse.json({
       message: 'Quote created successfully',

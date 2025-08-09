@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/saas/auth'
 import connectDB from '@/lib/saas/db'
 import Measurement from '@/models/Measurement'
 import Subscription from '@/models/Subscription'
+import { safeEmitZapierEvent, ZAPIER_EVENTS } from '@/lib/zapier/eventEmitter'
 
 // GET - Fetch measurement history
 export async function GET(request: NextRequest) {
@@ -116,6 +117,51 @@ export async function POST(request: NextRequest) {
     // Update subscription usage
     subscription.measurementsUsed += 1
     await subscription.save()
+    
+    // Calculate total area for large property detection
+    const totalArea = (measurementData.measurements.lawn?.total || 0) +
+                     (measurementData.measurements.driveway || 0) +
+                     (measurementData.measurements.sidewalk || 0)
+    
+    // Emit Zapier event for measurement completed
+    safeEmitZapierEvent(businessId, ZAPIER_EVENTS.MEASUREMENT_COMPLETED, {
+      measurementId: measurement._id.toString(),
+      address: measurement.address,
+      coordinates: measurement.coordinates,
+      measurements: measurement.measurements,
+      totalArea,
+      selectionMethod: measurement.selectionMethod,
+      customerId: measurement.customerId?.toString()
+    }, {
+      userId,
+      source: 'api'
+    })
+    
+    // Emit event for manual selection if applicable
+    if (measurement.selectionMethod === 'manual') {
+      safeEmitZapierEvent(businessId, ZAPIER_EVENTS.MEASUREMENT_MANUAL, {
+        measurementId: measurement._id.toString(),
+        address: measurement.address,
+        manualSelections: measurement.manualSelections,
+        totalArea
+      }, {
+        userId,
+        source: 'api'
+      })
+    }
+    
+    // Emit event for large property (over 10,000 sq ft)
+    if (totalArea > 10000) {
+      safeEmitZapierEvent(businessId, ZAPIER_EVENTS.MEASUREMENT_LARGE, {
+        measurementId: measurement._id.toString(),
+        address: measurement.address,
+        totalArea,
+        measurements: measurement.measurements
+      }, {
+        userId,
+        source: 'api'
+      })
+    }
 
     return NextResponse.json({
       message: 'Measurement saved successfully',

@@ -9,6 +9,7 @@ import { calculatePricing } from '@/lib/saas/pricing-calculator'
 import generateQuoteNumber from '@/lib/saas/quoteNumberGenerator'
 import { rateLimiters, checkRateLimit } from '@/lib/rateLimit'
 import { sendWebhook } from '@/lib/saas/webhook'
+import { safeEmitZapierEvent, ZAPIER_EVENTS } from '@/lib/zapier/eventEmitter'
 
 // POST /api/widget/submit - Submit measurement from widget
 export async function POST(req: NextRequest) {
@@ -104,6 +105,30 @@ export async function POST(req: NextRequest) {
         console.error('Webhook send error:', err)
       })
     }
+    
+    // Emit Zapier event for widget submission
+    safeEmitZapierEvent(businessId, ZAPIER_EVENTS.WIDGET_SUBMISSION, {
+      customerId: customer._id.toString(),
+      customer: {
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address
+      },
+      measurementId: measurement._id.toString(),
+      measurement: {
+        address: measurement.address,
+        measurements: measurement.measurements,
+        totalArea: (measurement.measurements.lawn?.total || 0) +
+                 (measurement.measurements.driveway || 0) +
+                 (measurement.measurements.sidewalk || 0)
+      },
+      metadata: {
+        source: 'widget',
+        referrer: req.headers.get('referer') || '',
+        ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || ''
+      }
+    })
 
     // Generate automatic quote if configured
     if (business.widgetSettings?.autoGenerateQuote !== false) { // Default to true

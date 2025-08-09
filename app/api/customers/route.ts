@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/saas/db'
 import Customer from '@/models/Customer'
 import Quote from '@/models/Quote'
 import Measurement from '@/models/Measurement'
+import { safeEmitZapierEvent, ZAPIER_EVENTS } from '@/lib/zapier/eventEmitter'
 
 // GET /api/customers - Get all customers for a business
 export async function GET(req: NextRequest) {
@@ -143,6 +144,21 @@ export async function POST(req: NextRequest) {
         referral: body.referral || '',
         customFields: body.customFields || {}
       }
+    })
+    
+    // Emit Zapier event for customer created
+    safeEmitZapierEvent(session.user.businessId, ZAPIER_EVENTS.CUSTOMER_CREATED, {
+      customerId: customer._id.toString(),
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address,
+      tags: customer.tags,
+      status: customer.status,
+      metadata: customer.metadata
+    }, {
+      userId: session.user.id,
+      source: 'api'
     })
 
     return NextResponse.json(customer, { status: 201 })

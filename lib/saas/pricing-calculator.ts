@@ -1,5 +1,6 @@
 import connectDB from '@/lib/saas/db'
 import PricingRule from '@/models/PricingRule'
+import { calculateGeopricing, applyGeopricingToServices } from '@/lib/geopricing/calculator'
 
 interface Service {
   name: string
@@ -14,6 +15,13 @@ interface PricingContext {
   totalArea?: number
   services?: Service[]
   date?: Date
+  // Add location for geopricing
+  location?: {
+    address?: string
+    lat?: number
+    lng?: number
+    city?: string
+  }
 }
 
 interface AppliedRule {
@@ -150,7 +158,8 @@ export async function calculatePricing(
   customerTags: string[] = [],
   zipCode?: string,
   totalArea?: number,
-  date?: Date
+  date?: Date,
+  location?: { address?: string; lat?: number; lng?: number; city?: string }
 ): Promise<{ services: Service[], appliedRules: AppliedRule[] }> {
   try {
     await connectDB()
@@ -163,7 +172,7 @@ export async function calculatePricing(
 
     const appliedRules: AppliedRule[] = []
     let finalServices = [...services]
-    const context: PricingContext = { zipCode, customerTags, totalArea, services, date }
+    const context: PricingContext = { zipCode, customerTags, totalArea, services, date, location }
 
     // Track which services have been modified by which rule types
     // to prevent multiple rules of the same type from stacking
@@ -249,6 +258,39 @@ export async function calculatePricing(
           { _id: rule._id },
           { $inc: { appliedCount: 1 } }
         ).catch(err => console.error('Failed to update rule count:', err))
+      }
+    }
+
+    // Apply geopricing if location is provided
+    if (location && (location.lat || location.zipcode || location.city)) {
+      const geopricingResult = await calculateGeopricing(
+        businessId,
+        {
+          address: location.address,
+          lat: location.lat,
+          lng: location.lng,
+          zipcode: zipCode,
+          city: location.city
+        },
+        date
+      )
+      
+      if (geopricingResult.applicableZones.length > 0) {
+        // Apply geopricing to services
+        finalServices = applyGeopricingToServices(finalServices, geopricingResult)
+        
+        // Add geopricing to applied rules
+        geopricingResult.applicableZones.forEach(zone => {
+          appliedRules.push({
+            ruleId: `geo_${zone.zoneId}`,
+            ruleName: `Geopricing: ${zone.zoneName}`,
+            ruleType: 'geopricing',
+            adjustment: zone.adjustmentValue,
+            description: zone.reason
+          })
+        })
+        
+        console.log('Geopricing applied:', geopricingResult)
       }
     }
 

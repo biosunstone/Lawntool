@@ -21,6 +21,9 @@ import {
   User,
   DollarSign,
   Code,
+  MapPin,
+  Clock,
+  Zap,
 } from 'lucide-react'
 import TeamSwitcher from '@/components/TeamSwitcher'
 
@@ -42,6 +45,9 @@ const adminNavigation = [
   { name: 'Admin Dashboard', href: '/admin', icon: Building },
   { name: 'User Management', href: '/admin/users', icon: Users },
   { name: 'Tax Settings', href: '/admin/tax-settings', icon: DollarSign },
+  { name: 'ZIP/Postal Code Pricing', href: '/admin/zipcode-pricing', icon: MapPin },
+  { name: 'Geofencing & Zones', href: '/admin/pricing-management', icon: Clock },
+  { name: 'Zapier Integration', href: '/admin/integrations', icon: Zap },
 ]
 
 export default function DashboardLayout({
