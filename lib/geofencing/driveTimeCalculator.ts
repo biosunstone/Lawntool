@@ -184,7 +184,8 @@ export async function calculateDriveTimeWithCache(
     // Clean old cache entries
     if (driveTimeCache.size > 100) {
       const now = Date.now();
-      for (const [key, value] of driveTimeCache.entries()) {
+      const entries = Array.from(driveTimeCache.entries());
+      for (const [key, value] of entries) {
         if (now - value.timestamp > CACHE_TTL) {
           driveTimeCache.delete(key);
         }

@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
           minimumPrice: parseFloat(row.minprice) || 30,
           maximumPrice: parseFloat(row.maxprice) || 500,
           isActive: row.active !== 'false',
-          createdBy: new mongoose.Types.ObjectId(session.user.id)
+          createdBy: new mongoose.Types.ObjectId((session.user as any).id || session.user.email)
         }
         
         // Set code based on country

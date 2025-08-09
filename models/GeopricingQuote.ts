@@ -308,7 +308,7 @@ GeopricingQuoteSchema.pre('save', function(next) {
 
 // Method to calculate total price
 GeopricingQuoteSchema.methods.calculateTotal = function() {
-  const subtotal = this.services.reduce((sum, service) => sum + service.basePrice, 0);
+  const subtotal = this.services.reduce((sum: number, service: any) => sum + service.basePrice, 0);
   const adjustmentAmount = subtotal * (this.zone.adjustment / 100);
   const total = Math.max(subtotal + adjustmentAmount, this.pricing.minimumCharge);
   

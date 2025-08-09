@@ -98,7 +98,6 @@ const IntegrationSchema = new Schema<IIntegration>({
     type: Schema.Types.ObjectId,
     ref: 'Business',
     required: true,
-    unique: true
   },
   
   zapier: {

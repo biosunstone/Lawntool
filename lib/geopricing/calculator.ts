@@ -79,7 +79,7 @@ export async function calculateGeopricing(
         if (serviceDate && zone.pricing.seasonalAdjustments) {
           const month = serviceDate.getMonth() + 1
           const seasonalAdj = zone.pricing.seasonalAdjustments.find(
-            adj => month >= adj.startMonth && month <= adj.endMonth
+            (adj: any) => month >= adj.startMonth && month <= adj.endMonth
           )
           if (seasonalAdj) {
             adjustmentValue += seasonalAdj.adjustmentValue

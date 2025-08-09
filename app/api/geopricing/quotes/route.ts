@@ -5,7 +5,7 @@ import connectDB from '@/lib/saas/db';
 import GeopricingQuote from '@/models/GeopricingQuote';
 import ShopLocation from '@/models/ShopLocation';
 import { calculateGeopricing } from '@/lib/geopricing/pricingEngine';
-import { sendEmail } from '@/lib/email';
+import { sendEmail } from '@/lib/saas/email';
 
 // POST /api/geopricing/quotes - Create a new quote
 export async function POST(request: NextRequest) {
@@ -326,11 +326,11 @@ async function sendQuoteEmail(quote: any) {
     <p>To accept this quote, please reply to this email or call us at ${quote.shop.phone}</p>
   `;
   
-  await sendEmail({
-    to: quote.customer.email,
-    subject: `Lawn Care Quote #${quote.quoteNumber}`,
-    html: emailHtml
-  });
+  await sendEmail(
+    quote.customer.email,
+    `Lawn Care Quote #${quote.quoteNumber}`,
+    emailHtml
+  );
 }
 
 // Helper function to get package features

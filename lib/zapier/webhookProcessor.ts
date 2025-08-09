@@ -222,16 +222,17 @@ export class ZapierWebhookProcessor {
       const responseTime = Date.now() - startTime
       
       // Log delivery
-      await ZapierLog.logWebhookDelivery(
-        event.businessId,
-        webhook._id,
-        event._id,
-        webhook.url,
-        response.status,
-        responseTime,
-        response.ok,
-        response.ok ? undefined : `HTTP ${response.status}`
-      )
+      // TODO: Implement webhook logging
+      // await ZapierLog.create({
+      //   businessId: event.businessId,
+      //   webhookId: webhook._id,
+      //   eventId: event._id,
+      //   url: webhook.url,
+      //   status: response.status,
+      //   responseTime,
+      //   success: response.ok,
+      //   error: response.ok ? undefined : `HTTP ${response.status}`
+      // })
       
       // Check if response is successful (2xx status)
       if (response.ok) {
@@ -262,16 +263,17 @@ export class ZapierWebhookProcessor {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       
       // Log failed delivery
-      await ZapierLog.logWebhookDelivery(
-        event.businessId,
-        webhook._id,
-        event._id,
-        webhook.url,
-        0,
-        responseTime,
-        false,
-        errorMessage
-      )
+      // TODO: Implement webhook logging
+      // await ZapierLog.create({
+      //   businessId: event.businessId,
+      //   webhookId: webhook._id,
+      //   eventId: event._id,
+      //   url: webhook.url,
+      //   status: 0,
+      //   responseTime,
+      //   success: false,
+      //   error: errorMessage
+      // })
       
       return {
         webhookId: webhook._id.toString(),

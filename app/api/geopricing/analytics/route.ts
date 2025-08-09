@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/saas/auth';
 import PricingCalculation from '@/models/PricingCalculation';
 import connectDB from '@/lib/saas/db';
+export const dynamic = 'force-dynamic'
+
 
 /**
  * GET /api/geopricing/analytics
@@ -42,13 +44,44 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case 'summary':
         // Get overall summary statistics
-        const [totalCalcs, zoneDistribution, performanceMetrics] = await Promise.all([
-          PricingCalculation.countDocuments({
-            businessId,
-            createdAt: { $gte: dateRange.start, $lte: dateRange.end }
-          }),
-          PricingCalculation.getZoneDistribution(businessId, dateRange),
-          PricingCalculation.getPerformanceMetrics(businessId, 100)
+        const totalCalcs = await PricingCalculation.countDocuments({
+          businessId,
+          createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+        });
+        
+        // Get zone distribution
+        const zoneDistribution = await PricingCalculation.aggregate([
+          {
+            $match: {
+              businessId,
+              createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+            }
+          },
+          {
+            $group: {
+              _id: '$zone',
+              count: { $sum: 1 },
+              avgPrice: { $avg: '$totalPrice' }
+            }
+          }
+        ]);
+        
+        // Get performance metrics
+        const performanceMetrics = await PricingCalculation.aggregate([
+          {
+            $match: {
+              businessId,
+              createdAt: { $gte: dateRange.start, $lte: dateRange.end }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              avgCalculationTime: { $avg: '$calculationTimeMs' },
+              totalCalculations: { $sum: 1 },
+              avgTotalPrice: { $avg: '$totalPrice' }
+            }
+          }
         ]);
         
         analytics = {

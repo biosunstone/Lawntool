@@ -262,7 +262,7 @@ export async function calculatePricing(
     }
 
     // Apply geopricing if location is provided
-    if (location && (location.lat || location.zipcode || location.city)) {
+    if (location && (location.lat || (location as any).zipcode || location.city)) {
       const geopricingResult = await calculateGeopricing(
         businessId,
         {

@@ -311,7 +311,7 @@ ZipCodePricingSchema.statics.getActiveConfig = async function(businessId: string
 };
 
 ZipCodePricingSchema.statics.getZipCodeRule = async function(businessId: string, zipCode: string) {
-  const config = await this.getActiveConfig(businessId);
+  const config = await (this as any).getActiveConfig(businessId);
   if (!config) return null;
   
   return config.serviceZipCodes.find((rule: IZipCodeRule) => 

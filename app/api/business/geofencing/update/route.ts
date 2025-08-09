@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       { businessId, isActive: true },
       {
         ...allowedUpdates,
-        lastModifiedBy: session.user.id,
+        lastModifiedBy: (session.user as any).id || session.user.email,
         updatedAt: new Date()
       },
       { new: true }

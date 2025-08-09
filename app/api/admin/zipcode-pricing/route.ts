@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     // Create new rule
     const rule = await ZipCodePricing.create({
       ...body,
-      createdBy: new mongoose.Types.ObjectId(session.user.id)
+      createdBy: new mongoose.Types.ObjectId((session.user as any).id || session.user.email)
     })
     
     return NextResponse.json({
@@ -177,7 +177,7 @@ export async function PUT(request: NextRequest) {
       _id,
       {
         ...updateData,
-        updatedBy: new mongoose.Types.ObjectId(session.user.id)
+        updatedBy: new mongoose.Types.ObjectId((session.user as any).id || session.user.email)
       },
       { new: true }
     )

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/saas/auth';
 import connectDB from '@/lib/saas/db';
 import Integration from '@/models/Integration';
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
           allowExternalAccess: true,
           rateLimitPerHour: 1000
         },
-        createdBy: new mongoose.Types.ObjectId(session.user.id)
+        createdBy: new mongoose.Types.ObjectId((session.user as any).id || session.user.email)
       });
     }
     

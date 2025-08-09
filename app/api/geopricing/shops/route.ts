@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         id: shop._id,
         name: shop.name,
         city: shop.city,
-        address: shop.fullAddress,
+        address: (shop as any).fullAddress || shop.address || `${shop.city}`,
         coordinates: {
           lat: shop.location.coordinates[1],
           lng: shop.location.coordinates[0]
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
         id: shop._id,
         name: shop.name,
         city: shop.city,
-        address: shop.fullAddress,
+        address: (shop as any).fullAddress || shop.address || `${shop.city}`,
         coordinates: {
           lat: shop.location.coordinates[1],
           lng: shop.location.coordinates[0]
@@ -219,7 +219,7 @@ export async function PUT(request: NextRequest) {
         id: shop._id,
         name: shop.name,
         city: shop.city,
-        address: shop.fullAddress,
+        address: (shop as any).fullAddress || shop.address || `${shop.city}`,
         baseRate: shop.pricing.baseRatePer1000SqFt,
         isActive: shop.isActive,
         isPrimary: shop.isPrimary

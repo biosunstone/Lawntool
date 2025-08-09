@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/saas/auth';
 import connectDB from '@/lib/saas/db';
 import GeofencingConfig from '@/models/GeofencingConfig';
+export const dynamic = 'force-dynamic'
+
 
 export async function GET(request: NextRequest) {
   try {

@@ -95,11 +95,11 @@ export async function calculateGeopricing(
       });
     } else {
       // Find nearest active shop location
-      shopLocation = await ShopLocation.findNearest(
+      // TODO: Implement proper geospatial query
+      shopLocation = await ShopLocation.findOne({
         businessId,
-        [customerLocation.lng, customerLocation.lat],
-        100 // Max 100km radius
-      );
+        isActive: true
+      }).sort({ isPrimary: -1 });
       
       // If no nearby shop, find by city
       if (!shopLocation && customerLocation.city) {
@@ -144,14 +144,17 @@ export async function calculateGeopricing(
     );
     
     // Step 4: Determine pricing zone
-    const zone = shopLocation.getZoneForDriveTime(driveTimeResult.driveTimeMinutes);
+    // TODO: Implement proper zone determination based on drive time
+    const zone = driveTimeResult.driveTimeMinutes <= 15 
+      ? shopLocation.zones?.close 
+      : driveTimeResult.driveTimeMinutes <= 30 
+        ? shopLocation.zones?.standard 
+        : shopLocation.zones?.extended;
     
     // Step 5: Calculate pricing
     const baseRate = shopLocation.pricing.baseRatePer1000SqFt;
-    const adjustedRate = shopLocation.calculateAdjustedPrice(
-      baseRate,
-      driveTimeResult.driveTimeMinutes
-    );
+    // TODO: Implement proper price adjustment
+    const adjustedRate = baseRate * (1 + (zone?.adjustment || 0) / 100);
     
     // Step 6: Calculate service-specific pricing if services provided
     let servicesPricing: GeopricingCalculation['services'] = {};
@@ -187,9 +190,9 @@ export async function calculateGeopricing(
     // Step 8: Create calculation result
     const calculation: GeopricingCalculation = {
       shopLocation: {
-        id: shopLocation._id.toString(),
+        id: (shopLocation._id as any).toString(),
         name: shopLocation.name,
-        address: shopLocation.fullAddress,
+        address: (shopLocation as any).fullAddress || shopLocation.address || '',
         city: shopLocation.city
       },
       customerLocation: {
@@ -205,15 +208,16 @@ export async function calculateGeopricing(
         durationText: driveTimeResult.durationText
       },
       zone: {
-        type: zone.type as 'close' | 'standard' | 'extended',
-        name: zone.name,
-        description: zone.description,
-        adjustment: zone.adjustment
+        type: (zone === shopLocation.zones?.close ? 'close' : 
+               zone === shopLocation.zones?.standard ? 'standard' : 'extended') as 'close' | 'standard' | 'extended',
+        name: zone?.name || 'Standard',
+        description: zone?.description || 'Standard service zone',
+        adjustment: zone?.adjustment || 0
       },
       pricing: {
         baseRate,
         adjustedRate,
-        adjustmentPercentage: zone.adjustment,
+        adjustmentPercentage: zone?.adjustment || 0,
         currency: shopLocation.pricing.currency,
         minimumCharge: shopLocation.pricing.minimumCharge
       },

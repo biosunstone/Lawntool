@@ -125,6 +125,12 @@ export interface IBusiness {
   permissions?: Map<string, string[]>;
   maxTeamMembers?: number;
   widgetSettings?: IWidgetSettings;
+  zapierSettings?: {
+    enabled: boolean;
+    apiKey?: string;
+    tier: 'none' | 'basic' | 'pro' | 'enterprise';
+    configId?: Types.ObjectId;
+  };
   createdAt: Date;
   updatedAt: Date;
 }

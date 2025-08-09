@@ -106,7 +106,7 @@ export async function calculateRealDriveTime(
         destinations: [destinationStr],
         mode: 'driving' as any,
         units: 'metric' as any,
-        departure_time: options.departureTime || 'now',
+        departure_time: (options.departureTime || 'now') as any,
         traffic_model: options.trafficModel || 'best_guess' as any,
         avoid: [
           ...(options.avoidHighways ? ['highways'] : []),
@@ -224,7 +224,7 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult> {
     
     // Extract address components
     const getComponent = (type: string) => {
-      const component = components.find(c => c.types.includes(type));
+      const component = components.find(c => c.types.includes(type as any));
       return component?.long_name;
     };
 
@@ -276,7 +276,7 @@ export async function batchCalculateDriveTimes(
           destinations: batch.map(locationToString),
           mode: 'driving' as any,
           units: 'metric' as any,
-          departure_time: options.departureTime || 'now',
+          departure_time: (options.departureTime || 'now') as any,
           traffic_model: options.trafficModel || 'best_guess' as any,
           key: apiKey
         }

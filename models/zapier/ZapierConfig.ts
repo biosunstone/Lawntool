@@ -133,7 +133,7 @@ ZapierConfigSchema.methods.canEmitEvent = function(): boolean {
   if (this.tier === 'none') return false
   
   // Check monthly webhook limit
-  const limits = {
+  const limits: { [key: string]: number } = {
     basic: 1000,
     pro: 10000,
     enterprise: -1 // Unlimited

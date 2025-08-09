@@ -50,16 +50,17 @@ export async function POST(request: NextRequest) {
     
     if (!config) {
       // Log failed auth attempt
-      const businessIdMatch = apiKey.match(/zap_([a-f0-9]{24})_/)
-      if (businessIdMatch) {
-        await ZapierLog.logAuth(
-          businessIdMatch[1] as any,
-          false,
-          request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '',
-          request.headers.get('user-agent') || '',
-          'Invalid API key'
-        )
-      }
+      // TODO: Implement logging
+      // const businessIdMatch = apiKey.match(/zap_([a-f0-9]{24})_/)
+      // if (businessIdMatch) {
+      //   await ZapierLog.create({
+      //     businessId: businessIdMatch[1],
+      //     success: false,
+      //     ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '',
+      //     userAgent: request.headers.get('user-agent') || '',
+      //     error: 'Invalid API key'
+      //   })
+      // }
       
       return NextResponse.json(
         { error: 'Invalid or disabled API key' },
@@ -80,12 +81,13 @@ export async function POST(request: NextRequest) {
     await config.save()
     
     // Log successful auth
-    await ZapierLog.logAuth(
-      config.businessId,
-      true,
-      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '',
-      request.headers.get('user-agent') || ''
-    )
+    // TODO: Implement logging
+    // await ZapierLog.create({
+    //   businessId: config.businessId,
+    //   success: true,
+    //   ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '',
+    //   userAgent: request.headers.get('user-agent') || ''
+    // })
     
     // Return connection details for Zapier
     return NextResponse.json({

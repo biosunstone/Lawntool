@@ -168,7 +168,7 @@ export async function processGeofencing(
       driveTimeMinutes: driveTimeResult.driveTimeMinutes,
       formattedDriveTime: driveTimeResult.formattedDuration,
       distanceMiles: driveTimeResult.distanceMiles,
-      assignedZone,
+      assignedZone: assignedZone || undefined,
       inServiceArea: true,
       propertySize: request.propertySize,
       services,

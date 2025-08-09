@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Connection successful',
-      business: {
+      business: authResult.business ? {
         id: authResult.business.id,
         name: authResult.business.name
-      },
-      tier: authResult.config.tier,
+      } : undefined,
+      tier: authResult.config?.tier,
       timestamp: new Date().toISOString()
     })
     
@@ -72,16 +72,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Authentication successful',
-      business: {
+      business: authResult.business ? {
         id: authResult.business.id,
         name: authResult.business.name
-      },
-      tier: authResult.config.tier,
-      features: {
-        webhooks: authResult.config.settings.allowWebhooks,
-        polling: authResult.config.settings.allowPolling,
-        actions: authResult.config.settings.allowActions
-      }
+      } : undefined,
+      tier: authResult.config?.tier,
+      features: authResult.config ? {
+        webhooks: authResult.config.settings?.allowWebhooks,
+        polling: authResult.config.settings?.allowPolling,
+        actions: authResult.config.settings?.allowActions
+      } : undefined
     })
     
   } catch (error) {

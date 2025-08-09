@@ -80,10 +80,10 @@ export async function POST(request: NextRequest) {
       }
     })
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Geopricing test error:', error)
     return NextResponse.json(
-      { error: 'Failed to calculate geopricing', details: error.message },
+      { error: 'Failed to calculate geopricing', details: error?.message || 'Unknown error' },
       { status: 500 }
     )
   }

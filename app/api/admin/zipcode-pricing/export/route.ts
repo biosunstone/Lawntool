@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/saas/auth'
 import connectDB from '@/lib/saas/db'
 import mongoose from 'mongoose'
+export const dynamic = 'force-dynamic'
+
 
 const ZipCodePricingSchema = new mongoose.Schema({
   zipCode: { type: String, index: true },

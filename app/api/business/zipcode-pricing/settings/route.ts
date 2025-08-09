@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/saas/auth'
 import connectDB from '@/lib/saas/db'
 import mongoose from 'mongoose'
+export const dynamic = 'force-dynamic'
+
 
 // Business ZIP Code Settings Schema
 const BusinessZipCodeSettingsSchema = new mongoose.Schema({
@@ -67,7 +69,7 @@ export async function GET(request: NextRequest) {
         defaultPricePerSqFt: 0.05,
         allowCustomRules: false,
         customRules: [],
-        createdBy: new mongoose.Types.ObjectId(session.user.id)
+        createdBy: new mongoose.Types.ObjectId((session.user as any).id || session.user.email)
       })
     }
     
@@ -133,7 +135,7 @@ export async function PUT(request: NextRequest) {
       {
         ...body,
         businessId: new mongoose.Types.ObjectId(businessId),
-        updatedBy: new mongoose.Types.ObjectId(session.user.id)
+        updatedBy: new mongoose.Types.ObjectId((session.user as any).id || session.user.email)
       },
       { new: true, upsert: true }
     )
