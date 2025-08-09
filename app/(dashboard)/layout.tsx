@@ -249,11 +249,11 @@ export default function DashboardLayout({
                           Business Settings
                         </Link>
                         <button
-                          onClick={() => signOut({ callbackUrl: '/' })}
+                          onClick={() => signOut({ callbackUrl: process.env.NEXT_PUBLIC_APP_URL })}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <LogOut className="mr-3 h-4 w-4" />
-                          Sign out
+                          Sign out000
                         </button>
                       </div>
                     </div>
