@@ -21,7 +21,7 @@ export async function GET(
 
     const customer:any = await Customer.findOne({
       _id: params.id,
-      businessId: session.user.businessId
+      businessId: (session.user as any).businessId
     }).lean()
 
     if (!customer) {
@@ -110,7 +110,7 @@ export async function PATCH(
     // Check if customer exists and belongs to business
     const customer = await Customer.findOne({
       _id: params.id,
-      businessId: session.user.businessId
+      businessId: (session.user as any).businessId
     })
 
     if (!customer) {
@@ -121,7 +121,7 @@ export async function PATCH(
     if (body.email && body.email !== customer.email) {
       const existingCustomer = await Customer.findOne({
         email: body.email,
-        businessId: session.user.businessId,
+        businessId: (session.user as any).businessId,
         _id: { $ne: params.id }
       })
 
@@ -171,7 +171,7 @@ export async function DELETE(
 
     const result = await Customer.deleteOne({
       _id: params.id,
-      businessId: session.user.businessId
+      businessId: (session.user as any).businessId
     })
 
     if (result.deletedCount === 0) {

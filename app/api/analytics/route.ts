@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const period = searchParams.get('period') || '30' // days
     const type = searchParams.get('type') || 'overview'
 
-    const businessId = session.user.businessId
+    const businessId = (session.user as any).businessId
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - parseInt(period))
 

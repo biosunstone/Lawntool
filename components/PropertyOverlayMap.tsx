@@ -15,7 +15,7 @@ export default function PropertyOverlayMap({
   const [imageError, setImageError] = useState(false);
 
   const { coordinates, address } = measurements;
-  const apiKey = "AIzaSyBebHv77bSOdUkXyboh_kvCWmlGk04o1O4";
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyBebHv77bSOdUkXyboh_kvCWmlGk04o1O4";
 
   // Calculate property boundaries with more realistic dimensions
   // Most residential properties are rectangular, not square

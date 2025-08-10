@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sunstone Digital Tech is a SaaS property measurement application using Google Maps satellite imagery. It allows businesses to provide instant measurements for lawns, driveways, sidewalks, and buildings to their customers, with quote generation and customer management features.
+Sunstone Digital Tech is a multi-tenant SaaS property measurement application that enables businesses to provide instant lawn care quotes using Google Maps satellite imagery, with customer management and automated pricing.
 
 ## Development Commands
 
@@ -12,168 +12,182 @@ Sunstone Digital Tech is a SaaS property measurement application using Google Ma
 # Install dependencies
 npm install
 
-# Run development server on localhost:3000
-npm run dev
+# Run development server
+npm run dev              # Default port 3000
 
-# Build for production
-npm run build
-
-# Start production server
-npm run start
-
-# Run linting
-npm run lint
+# Build and deployment
+npm run build           # Build for production
+npm run start           # Start production server
+npm run lint            # Run ESLint
 
 # Test utilities (run from project root)
 node test-mongodb.js              # Test MongoDB connection
 node test-email.js                # Test email sending
-node test-email-config.js         # Test email configuration
+node test-email-config.js         # Test email configuration  
 node test-quote-generation.js     # Test quote generation
-node scripts/create-test-users.js # Create test users in database
+node test-pricing-rules.js        # Test pricing rules
+node test-geofencing.js           # Test geofencing features
+node test-zapier-integration.js   # Test Zapier integration
+
+# Setup scripts
+node scripts/create-test-users.js           # Create test users
+node scripts/create-test-business.js        # Create test business
+node scripts/setup-comprehensive-pricing.js # Setup pricing rules
+node scripts/setup-geofencing.js           # Setup geofencing zones
 ```
 
 ## Architecture
 
 ### Tech Stack
 - **Framework**: Next.js 14.2.5 with App Router
-- **Language**: TypeScript (strict mode enabled)
+- **Language**: TypeScript (strict mode)
 - **Styling**: Tailwind CSS
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: NextAuth.js with credentials provider
+- **Database**: MongoDB with Mongoose ODM  
+- **Authentication**: NextAuth.js v4 with credentials provider
 - **Maps**: Google Maps JavaScript API (@react-google-maps/api)
-- **Email**: Nodemailer for notifications
-- **Payments**: Stripe for subscriptions
-- **Icons**: Lucide React
-- **PDF**: jsPDF for quote exports
+- **Email**: Nodemailer
+- **Payments**: Stripe subscriptions
+- **State**: React Query (@tanstack/react-query)
 - **Forms**: React Hook Form with Zod validation
+- **PDF**: jsPDF for quote exports
 
-### Environment Configuration
-Required in `.env.local`:
+### Environment Configuration (.env.local)
 ```
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your_google_maps_api_key>
-MONGODB_URI=<your_mongodb_connection_string>
-NEXTAUTH_SECRET=<your_nextauth_secret>
-NEXTAUTH_URL=http://localhost:3000
-STRIPE_SECRET_KEY=<your_stripe_secret>
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=<your_stripe_public_key>
-EMAIL_FROM=<sender_email>
-EMAIL_SERVER_HOST=<smtp_host>
-EMAIL_SERVER_PORT=<smtp_port>
-EMAIL_SERVER_USER=<smtp_user>
-EMAIL_SERVER_PASSWORD=<smtp_password>
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=    # Google Maps API key
+MONGODB_URI=                        # MongoDB connection string
+NEXTAUTH_SECRET=                    # NextAuth secret for JWT
+NEXTAUTH_URL=http://localhost:3000  # NextAuth base URL
+STRIPE_SECRET_KEY=                  # Stripe secret key
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY= # Stripe publishable key
+EMAIL_FROM=                         # Sender email address
+EMAIL_SERVER_HOST=                  # SMTP host
+EMAIL_SERVER_PORT=                  # SMTP port
+EMAIL_SERVER_USER=                  # SMTP username
+EMAIL_SERVER_PASSWORD=              # SMTP password
 ```
 
-### Key APIs Required
-Google Cloud Console APIs to enable:
+### Required Google APIs
+Enable in Google Cloud Console:
 - Maps JavaScript API
-- Places API
+- Places API  
 - Geocoding API
 - Maps Embed API
 
-### Core Architecture
+## Core Architecture
 
-#### Authentication & Authorization
-- `lib/saas/auth.ts` - NextAuth configuration with role-based access (admin, business_owner, staff, customer)
-- `middleware.ts` - Route protection based on user roles with business context
-- Session management with JWT tokens including business selection
-- Multi-business support - users can belong to multiple businesses
+### Authentication & Authorization
+- **NextAuth Configuration**: `lib/saas/auth.ts` - JWT strategy with role-based access
+- **Middleware**: `middleware.ts` - Route protection by role (admin, business_owner, staff, customer)
+- **Multi-Business Support**: Users can belong to multiple businesses with role-based permissions
+- **Session Management**: JWT tokens include businessId for tenant context
 
-#### Database Models (Mongoose)
-- `User` - Authentication and user profiles with role management
-- `Business` - Multi-tenant business accounts with settings and branding
-- `Customer` - Customer records linked to businesses
-- `Measurement` - Property measurement history with polygons
-- `Quote` - Quote generation and tracking with email notifications
-- `PricingRule` - Business-specific pricing configuration with complex rule engine
-- `Subscription` - Stripe subscription tracking with plan management
-- `TeamInvitation` - Team member invitation system with permissions
-- `SystemSettings` - Global system configuration
+### Database Models (Mongoose)
+- `User` - Authentication with roles and multi-business associations
+- `Business` - Multi-tenant accounts with settings and branding
+- `Customer` - Business-linked customer records
+- `Measurement` - Property measurements with polygon data
+- `Quote` - Quote generation with email notifications
+- `PricingRule` - Complex pricing engine with multiple calculation methods
+- `Subscription` - Stripe subscription management
+- `TeamInvitation` - Team member invitations with permissions
+- `SystemSettings` - Global configuration
+- `ZapierIntegration` - Zapier webhook configurations
+- `GeofencingConfig` - Location-based pricing zones
 
-#### API Routes Pattern
-- `/api/auth/*` - Authentication endpoints
+### API Routes Structure
+- `/api/auth/*` - Authentication (signup, login, session)
 - `/api/customers/*` - Customer CRUD operations
 - `/api/measurements/*` - Measurement saving and retrieval
 - `/api/quotes/*` - Quote generation and management
 - `/api/pricing-rules/*` - Business pricing configuration
 - `/api/team/*` - Team management and invitations
+- `/api/billing/*` - Stripe subscription management
 - `/api/admin/*` - Admin-only operations
 - `/api/geocode` - Server-side geocoding (avoids CORS)
-- `/api/public/quote/*` - Public quote viewing/response
+- `/api/public/quote/*` - Public quote viewing
+- `/api/zapier/*` - Zapier integration endpoints
+- `/api/geofencing/*` - Geofencing configuration
+- `/api/geopricing/*` - Location-based pricing
+- `/api/zipcode-pricing/*` - ZIP code pricing rules
 
-#### Measurement System
-1. **Address Input**: `AddressSearchWithAutocomplete` uses Google Places Autocomplete
-2. **Geocoding**: Server-side via `/api/geocode` to get coordinates
+### Measurement System Flow
+1. **Address Input**: `AddressSearchWithAutocomplete` component with Google Places
+2. **Geocoding**: Server-side via `/api/geocode` endpoint
 3. **Calculation Engine**:
-   - `lib/propertyMeasurement.ts` - Area calculations using Shoelace formula
-   - `lib/geospatialAnalysis.ts` - Property type detection and boundary analysis
-   - `lib/accurateMeasurements.ts` - Generates realistic measurements (currently simulated)
-4. **Map Display**: Multiple implementations available (EmbedMap, SimpleMap, WorkingMap)
-5. **Results**: `MeasurementResults` component displays calculations
+   - `lib/propertyMeasurement.ts` - Shoelace formula for area calculation
+   - `lib/geospatialAnalysis.ts` - Property type detection
+   - `lib/accurateMeasurements.ts` - Measurement generation (simulated)
+   - `lib/manualSelection/polygonCalculator.ts` - Manual polygon calculations
+4. **Map Components**: EmbedMap, SimpleMap, WorkingMap, InteractiveMapOverlay
+5. **Results Display**: `MeasurementResults` component
 
-#### SaaS Features
-- Multi-tenant architecture with business isolation
-- Role-based dashboards (admin/business_owner/staff/customer)
-- Team management with invitation system and permissions
-- Subscription management with Stripe integration
-- White-label widget for embedding (`/widget/[businessId]`)
-- Email notifications for quotes and customer interactions
-- Complex pricing rule engine with multiple calculation methods
-- Business branding and customization options
+### SaaS Features
+- **Multi-Tenancy**: Complete business isolation with tenant context
+- **Team Management**: Invitation system with role-based permissions
+- **Subscription Tiers**: Stripe integration with usage limits
+- **White-Label Widget**: Embeddable at `/widget/[businessId]`
+- **Pricing Engine**: Multiple calculation methods (per sqft, flat rate, tiered)
+- **Geofencing**: Location-based pricing with polygon zones
+- **Zapier Integration**: Webhook triggers for automation
+- **Manual Selection**: Polygon drawing tool for accurate measurements
 
-### Component Organization
+## Implementation Guidelines
 
-#### Layout Structure
-- `(auth)` - Public authentication pages
-- `(dashboard)` - Protected dashboard routes with shared layout
-- `widget` - Embeddable widget for businesses
+### Dynamic Imports
+Map components must use dynamic imports to prevent SSR errors:
+```typescript
+dynamic(() => import('...'), { ssr: false })
+```
 
-#### Key Components
-- `MeasurementSection` - Main measurement orchestrator
-- `AuthenticatedMeasurement` - Measurement with save functionality
-- `ClientProviders` - Context providers for auth and state
-- `GoogleMapsProvider` - Maps API initialization wrapper
+### API Route Pattern
+```typescript
+// Always start with database connection
+await connectDB()
 
-### Test Infrastructure
-Multiple test pages exist for debugging map implementations:
-- `/api-test`, `/test-map`, `/direct-map-test` - Various map component tests
-- `/test-maps-*` - Different map loading strategies
-- Public HTML test files in `/public` for isolated testing
+// Verify authentication
+const session = await getServerSession(authOptions)
+if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-## Important Implementation Notes
+// Check business context for multi-tenant isolation
+const businessId = session.user.businessId
 
-1. **Dynamic Imports**: Map components require `dynamic(() => import(...), { ssr: false })` to prevent SSR errors
+// Use hasRole() helper for permission checks
+if (!hasRole(session.user, ['admin', 'business_owner'])) {
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+}
+```
 
-2. **CORS Handling**: Always use server-side `/api/geocode` for geocoding operations
+### TypeScript Path Alias
+Use `@/` for imports (maps to project root)
 
-3. **TypeScript Path Alias**: Use `@/` for imports (mapped to root directory)
+### State Management
+- React Query for server state
+- Context API for UI state (ManualSelectionContext)
+- Local state for component-specific needs
 
-4. **Measurement Accuracy**: Currently uses simulated measurements - actual satellite image analysis not implemented
+### Error Handling
+API routes should return appropriate HTTP status codes with error messages
 
-5. **Authentication Flow**: Protected routes check session in middleware, API routes verify in handlers
-
-6. **Database Connections**: Use `connectDB()` at start of API routes, connection pooling handled by mongoose
-
-7. **Error Handling**: API routes should return appropriate status codes with error messages
-
-8. **State Management**: Using React Query for server state, local state for UI
-
-9. **Business Context**: Always check business context in API routes for multi-tenant data isolation
-
-10. **Role Verification**: Use `hasRole()` helper to verify user permissions in API routes
+### Business Context
+Always verify business context in API routes for data isolation
 
 ## Current Limitations
+- Measurements are simulated (no actual satellite image analysis)
+- No computer vision for boundary detection
+- Basic HTML email templates
+- No automated test suite (only manual test scripts)
 
-- Measurements are simulated, not from actual image analysis
-- No real computer vision for boundary detection
-- Widget customization limited to basic branding
-- Email templates are basic HTML
-- No automated testing setup
+## Testing Approach
+Use the test scripts in project root for verifying functionality:
+- Database connectivity
+- Email configuration
+- Pricing rules
+- Geofencing zones
+- Zapier webhooks
 
 ## Manual Selection Mode
-
-The application includes a manual polygon drawing feature for accurate property measurements:
-- `contexts/ManualSelectionContext.tsx` - State management for manual selection mode
-- `components/manual/InteractiveMapOverlay.tsx` - Drawing interface on Google Maps
-- `components/manual/SelectionToolbar.tsx` - UI controls for drawing tools
-- `lib/manualSelection/polygonCalculator.ts` - Area calculation for drawn polygons
-- Toggle between automatic and manual measurement modes in the UI
+Toggle between automatic and manual measurement modes:
+- `contexts/ManualSelectionContext.tsx` - State management
+- `components/manual/InteractiveMapOverlay.tsx` - Drawing interface
+- `components/manual/SelectionToolbar.tsx` - UI controls
+- Polygon drawing with real-time area calculation

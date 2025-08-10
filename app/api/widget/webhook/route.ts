@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const businessId = session.user.businessId
+    const businessId = (session.user as any).businessId
     if (!businessId) {
       return NextResponse.json({ error: 'No business associated with user' }, { status: 400 })
     }
@@ -57,7 +57,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const businessId = session.user.businessId
+    const businessId = (session.user as any).businessId
     if (!businessId) {
       return NextResponse.json({ error: 'No business associated with user' }, { status: 400 })
     }
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const businessId = session.user.businessId
+    const businessId = (session.user as any).businessId
     if (!businessId) {
       return NextResponse.json({ error: 'No business associated with user' }, { status: 400 })
     }

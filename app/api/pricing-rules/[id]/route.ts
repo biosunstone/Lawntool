@@ -19,7 +19,7 @@ export async function GET(
 
     const rule = await PricingRule.findOne({
       _id: params.id,
-      businessId: session.user.businessId
+      businessId: (session.user as any).businessId
     }).lean()
 
     if (!rule) {
@@ -53,7 +53,7 @@ export async function PATCH(
     const rule = await PricingRule.findOneAndUpdate(
       {
         _id: params.id,
-        businessId: session.user.businessId
+        businessId: (session.user as any).businessId
       },
       body,
       { new: true }
@@ -88,7 +88,7 @@ export async function DELETE(
 
     const result = await PricingRule.deleteOne({
       _id: params.id,
-      businessId: session.user.businessId
+      businessId: (session.user as any).businessId
     })
 
     if (result.deletedCount === 0) {

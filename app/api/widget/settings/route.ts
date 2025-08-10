@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const businessId = session.user.businessId
+    const businessId = (session.user as any).businessId
     if (!businessId) {
       return NextResponse.json({ error: 'No business associated with user' }, { status: 400 })
     }
@@ -82,13 +82,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const businessId = session.user.businessId
+    const businessId = (session.user as any).businessId
     if (!businessId) {
       return NextResponse.json({ error: 'No business associated with user' }, { status: 400 })
     }
 
     // Check user role - only business owners and admins can update settings
-    if (session.user.role !== 'business_owner' && session.user.role !== 'admin') {
+    if ((session.user as any).role !== 'business_owner' && (session.user as any).role !== 'admin') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -156,13 +156,13 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const businessId = session.user.businessId
+    const businessId = (session.user as any).businessId
     if (!businessId) {
       return NextResponse.json({ error: 'No business associated with user' }, { status: 400 })
     }
 
     // Check user role
-    if (session.user.role !== 'business_owner' && session.user.role !== 'admin') {
+    if ((session.user as any).role !== 'business_owner' && (session.user as any).role !== 'admin') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

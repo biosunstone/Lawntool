@@ -24,8 +24,12 @@ import {
   MapPin,
   Clock,
   Zap,
+  ShoppingCart,
 } from 'lucide-react'
 import TeamSwitcher from '@/components/TeamSwitcher'
+import CartIcon from '@/components/cart/CartIcon'
+import RecoveryBanner from '@/components/cart/RecoveryBanner'
+import ExitIntentModal from '@/components/cart/ExitIntentModal'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -44,6 +48,7 @@ const navigation = [
 const adminNavigation = [
   { name: 'Admin Dashboard', href: '/admin', icon: Building },
   { name: 'User Management', href: '/admin/users', icon: Users },
+  { name: 'Cart Recovery', href: '/dashboard/admin/cart-recovery', icon: ShoppingCart },
   { name: 'Tax Settings', href: '/admin/tax-settings', icon: DollarSign },
   { name: 'ZIP/Postal Code Pricing', href: '/admin/zipcode-pricing', icon: MapPin },
   { name: 'Geofencing & Zones', href: '/admin/pricing-management', icon: Clock },
@@ -78,7 +83,14 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* Recovery Banner */}
+      <RecoveryBanner />
+      
+      {/* Exit Intent Modal */}
+      <ExitIntentModal businessId={(session?.user as any)?.businessId} />
+      
+      <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
       <div className={`fixed inset-0 flex z-40 md:hidden ${sidebarOpen ? '' : 'pointer-events-none'}`}>
         <div
@@ -212,12 +224,17 @@ export default function DashboardLayout({
             <div className="flex justify-between h-16">
               <div className="flex items-center">
                 <h1 className="text-xl font-semibold text-gray-900">
-                  {filteredNavigation.find(item => item.href === pathname)?.name || 'Dashboard'}
+                  {filteredNavigation.find(item => item.href === pathname)?.name || 
+                   adminNavigation.find(item => pathname.startsWith(item.href))?.name || 
+                   'Dashboard'}
                 </h1>
               </div>
               
               {/* User menu */}
               <div className="flex items-center space-x-4">
+                {/* Cart Icon */}
+                <CartIcon />
+                
                 {/* Team Switcher */}
                 <TeamSwitcher />
                 
@@ -279,5 +296,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </>
   )
 }

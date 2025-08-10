@@ -20,7 +20,7 @@ export async function POST(
     const customer = await Customer.findOneAndUpdate(
       {
         _id: params.id,
-        businessId: session.user.businessId
+        businessId: (session.user as any).businessId
       },
       {
         status: 'archived',
@@ -59,7 +59,7 @@ export async function DELETE(
     const customer = await Customer.findOneAndUpdate(
       {
         _id: params.id,
-        businessId: session.user.businessId
+        businessId: (session.user as any).businessId
       },
       {
         status: 'active',

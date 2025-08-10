@@ -3,6 +3,9 @@ const nextConfig = {
   images: {
     domains: ['sunstonedigitaltech.com'],
   },
+  experimental: {
+    instrumentationHook: true,
+  },
 }
 
 export default nextConfig

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
 
     // Build query
-    const query: any = { businessId: session.user.businessId }
+    const query: any = { businessId: (session.user as any).businessId }
     
     if (search) {
       query.$or = [
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     // Check if customer with email already exists for this business
     const existingCustomer = await Customer.findOne({
       email: body.email,
-      businessId: session.user.businessId
+      businessId: (session.user as any).businessId
     })
 
     if (existingCustomer) {
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
     // Create customer
     const customer = await Customer.create({
       ...body,
-      businessId: session.user.businessId,
+      businessId: (session.user as any).businessId,
       status: body.status || 'active',
       tags: body.tags || [],
       notes: body.notes || '',
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     })
     
     // Emit Zapier event for customer created
-    safeEmitZapierEvent(session.user.businessId, ZAPIER_EVENTS.CUSTOMER_CREATED, {
+    safeEmitZapierEvent((session.user as any).businessId, ZAPIER_EVENTS.CUSTOMER_CREATED, {
       customerId: customer._id.toString(),
       name: customer.name,
       email: customer.email,
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
       status: customer.status,
       metadata: customer.metadata
     }, {
-      userId: session.user.id,
+      userId: (session.user as any).id,
       source: 'api'
     })
 

@@ -27,7 +27,13 @@
       "Bash(tar:*)",
       "Bash(ls:*)",
       "Bash(head:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(touch:*)",
+      "Bash(mkdir:*)",
+      "Bash(awk:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(npx prettier:*)"
     ],
     "deny": []
   }

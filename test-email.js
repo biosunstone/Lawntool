@@ -1,90 +1,104 @@
 /**
- * Test email configuration - Updated for new email service
- * Run this script to verify your email settings are correct
+ * Simple email configuration test
+ * Run: node test-email.js
  */
 
-require('dotenv').config({ path: '.env.local' });
+const nodemailer = require('nodemailer')
+require('dotenv').config({ path: '.env.local' })
 
 async function testEmail() {
-  console.log('=== Email Configuration Test ===\n');
+  console.log('📧 Testing Email Configuration...\n')
   
-  // Check environment variables
-  console.log('Environment Variables:');
-  console.log('EMAIL_SERVER_HOST:', process.env.EMAIL_SERVER_HOST || 'Not set');
-  console.log('EMAIL_SERVER_PORT:', process.env.EMAIL_SERVER_PORT || 'Not set');
-  console.log('EMAIL_SERVER_USER:', process.env.EMAIL_SERVER_USER || 'Not set');
-  console.log('EMAIL_SERVER_PASSWORD:', process.env.EMAIL_SERVER_PASSWORD ? '****** (set)' : 'Not set');
-  console.log('EMAIL_FROM:', process.env.EMAIL_FROM || 'Not set');
-  console.log('\n');
-
+  // Check if environment variables are set
+  if (!process.env.EMAIL_SERVER_HOST) {
+    console.error('❌ EMAIL_SERVER_HOST not configured in .env.local')
+    console.log('\nPlease add the following to your .env.local file:')
+    console.log(`
+EMAIL_SERVER_HOST=smtp.gmail.com
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER=your.email@gmail.com
+EMAIL_SERVER_PASSWORD=your-app-password
+EMAIL_FROM=your.email@gmail.com
+    `)
+    return
+  }
+  
+  console.log('Configuration:')
+  console.log('  Host:', process.env.EMAIL_SERVER_HOST)
+  console.log('  Port:', process.env.EMAIL_SERVER_PORT)
+  console.log('  User:', process.env.EMAIL_SERVER_USER)
+  console.log('  From:', process.env.EMAIL_FROM)
+  console.log()
+  
   try {
-    // Import and test the email service
-    const { verifyEmailConfig, sendMail } = await import('./lib/saas/email-service.ts');
-    
-    console.log('Testing email configuration...\n');
-    const verifyResult = await verifyEmailConfig();
-    
-    if (verifyResult.success) {
-      console.log('✅ Email configuration test PASSED!\n');
-      console.log('Your email settings are correctly configured.');
-      
-      // Try sending a test email
-      console.log('\nSending a test email...');
-      const testResult = await sendMail({
-        from: process.env.EMAIL_FROM || 'test@example.com',
-        to: process.env.EMAIL_FROM || 'test@example.com',
-        subject: 'Test Email - Sunstone Configuration',
-        html: `
-          <h2>Test Email Successful!</h2>
-          <p>This is a test email from your Sunstone application.</p>
-          <p>If you're seeing this, your email configuration is working correctly.</p>
-          <hr>
-          <p><small>Sent at: ${new Date().toLocaleString()}</small></p>
-        `
-      });
-      
-      if (testResult.success) {
-        console.log('✅ Test email sent successfully!');
-        console.log('Message ID:', testResult.messageId);
-      } else {
-        console.log('❌ Failed to send test email:', testResult.error);
+    // Create transport (not transporter!)
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_SERVER_HOST,
+      port: parseInt(process.env.EMAIL_SERVER_PORT || '587'),
+      secure: process.env.EMAIL_SERVER_PORT === '465',
+      auth: {
+        user: process.env.EMAIL_SERVER_USER,
+        pass: process.env.EMAIL_SERVER_PASSWORD
       }
-      
-    } else {
-      console.log('❌ Email configuration test FAILED!\n');
-      console.log('Error:', verifyResult.error);
-      
-      console.log('\n=== Troubleshooting Guide ===\n');
-      
-      if (verifyResult.error?.includes('Authentication failed') || verifyResult.error?.includes('Invalid login')) {
-        console.log('📧 Gmail Authentication Issue:');
-        console.log('\nYou need to use an App Password for Gmail, not your regular password.');
-        console.log('\nSteps to fix:');
-        console.log('1. Go to https://myaccount.google.com/security');
-        console.log('2. Enable 2-Step Verification (required for App Passwords)');
-        console.log('3. Go to https://myaccount.google.com/apppasswords');
-        console.log('4. Generate a new App Password for "Mail"');
-        console.log('5. Copy the 16-character password (looks like: abcd efgh ijkl mnop)');
-        console.log('6. Remove ALL spaces from the password: abcdefghijklmnop');
-        console.log('7. Update your .env.local file:');
-        console.log('   EMAIL_SERVER_PASSWORD=abcdefghijklmnop');
-        console.log('\n⚠️  Make sure to remove ALL spaces from the App Password!');
-      }
+    })
+    
+    // Verify connection
+    console.log('🔍 Verifying SMTP connection...')
+    await transporter.verify()
+    console.log('✅ SMTP connection successful!\n')
+    
+    // Send test email
+    console.log('📤 Sending test email...')
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: process.env.EMAIL_SERVER_USER, // Send to yourself
+      subject: '🎉 Cart Recovery Email Test - Success!',
+      text: 'If you can read this, your email configuration is working correctly!',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2 style="color: #4CAF50;">✅ Email Configuration Successful!</h2>
+          <p>Your email setup is working correctly. You can now send cart recovery emails.</p>
+          <hr style="margin: 20px 0;">
+          <h3>Test Details:</h3>
+          <ul>
+            <li>SMTP Host: ${process.env.EMAIL_SERVER_HOST}</li>
+            <li>Port: ${process.env.EMAIL_SERVER_PORT}</li>
+            <li>From: ${process.env.EMAIL_FROM}</li>
+            <li>Time: ${new Date().toLocaleString()}</li>
+          </ul>
+          <hr style="margin: 20px 0;">
+          <p style="color: #666;">This is a test email from your Abandoned Cart Recovery system.</p>
+        </div>
+      `
+    })
+    
+    console.log('✅ Test email sent successfully!')
+    console.log('  Message ID:', info.messageId)
+    console.log('  Check your inbox:', process.env.EMAIL_SERVER_USER)
+    
+    // If using Ethereal, show preview URL
+    if (process.env.EMAIL_SERVER_HOST === 'smtp.ethereal.email') {
+      console.log('\n📧 View email at:', nodemailer.getTestMessageUrl(info))
     }
     
   } catch (error) {
-    console.error('Test failed with error:', error);
-    console.log('\nMake sure the application can compile properly.');
-    console.log('Try running: npm run build');
+    console.error('\n❌ Email test failed:', error.message)
+    
+    if (error.message.includes('Invalid login')) {
+      console.log('\n💡 Tips:')
+      console.log('  1. For Gmail: Use App Password, not regular password')
+      console.log('  2. Enable 2-Factor Authentication first')
+      console.log('  3. Generate App Password at: https://myaccount.google.com/apppasswords')
+    }
+    
+    if (error.message.includes('ECONNREFUSED')) {
+      console.log('\n💡 Tips:')
+      console.log('  1. Check your internet connection')
+      console.log('  2. Verify SMTP host and port are correct')
+      console.log('  3. Try port 465 (SSL) or 587 (TLS)')
+    }
   }
 }
 
-// Run the test
-console.log('Starting email configuration test...\n');
-testEmail().then(() => {
-  console.log('\n=== Test Complete ===');
-  process.exit(0);
-}).catch(error => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// Run test
+testEmail()

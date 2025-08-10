@@ -2,11 +2,14 @@
 
 import { SessionProvider } from 'next-auth/react'
 import { Toaster } from 'react-hot-toast'
+import { CartProvider } from '@/contexts/CartContext'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      {children}
+      <CartProvider>
+        {children}
+      </CartProvider>
       <Toaster 
         position="top-right"
         toastOptions={{

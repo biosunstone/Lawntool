@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const type = searchParams.get('type')
     const active = searchParams.get('active')
 
-    const query: any = { businessId: session.user.businessId }
+    const query: any = { businessId: (session.user as any).businessId }
     
     if (type) {
       query.type = type
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     const rule = await PricingRule.create({
       ...body,
-      businessId: session.user.businessId,
+      businessId: (session.user as any).businessId,
     })
 
     return NextResponse.json(rule, { status: 201 })

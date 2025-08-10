@@ -10,7 +10,7 @@ const AddressSearchWithAutocomplete = dynamic(
     loading: () => <div>Loading search...</div>
   }
 )
-import MeasurementResults, { PropertyMeasurements } from './MeasurementResults'
+import MeasurementResultsWithCart, { PropertyMeasurements } from './MeasurementResultsWithCart'
 import { generateAccurateMeasurements } from '@/lib/accurateMeasurements'
 
 interface MeasurementSectionProps {
@@ -153,7 +153,7 @@ export default function MeasurementSection({
 
         {(measurements || isLoading) && !hideResults && (
           <div className="max-w-6xl mx-auto">
-            <MeasurementResults 
+            <MeasurementResultsWithCart 
               measurements={measurements} 
               isLoading={isLoading}
               onMeasurementsUpdated={handleMeasurementsUpdated}

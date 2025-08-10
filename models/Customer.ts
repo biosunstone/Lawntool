@@ -31,8 +31,54 @@ const customerSchema = new Schema<ICustomer>({
       lat: Number,
       lng: Number,
     },
+    polygon: [{
+      lat: Number,
+      lng: Number,
+    }],
+    measurements: {
+      lot: {
+        area: Number,
+        perimeter: Number,
+        polygon: [{
+          lat: Number,
+          lng: Number
+        }]
+      },
+      lawn: {
+        area: Number,
+        perimeter: Number,
+        polygon: [{
+          lat: Number,
+          lng: Number
+        }]
+      },
+      house: {
+        area: Number,
+        perimeter: Number,
+        polygon: [{
+          lat: Number,
+          lng: Number
+        }]
+      },
+      driveway: {
+        area: Number,
+        perimeter: Number,
+        polygon: [{
+          lat: Number,
+          lng: Number
+        }]
+      }
+    },
+    isPrimary: {
+      type: Boolean,
+      default: false
+    },
     notes: String,
   }],
+  source: {
+    type: String,
+    default: 'manual'
+  },
   tags: [String],
   notes: String,
   status: {

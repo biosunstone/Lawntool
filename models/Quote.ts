@@ -15,7 +15,6 @@ const quoteSchema = new Schema<IQuote>({
   measurementId: {
     type: Schema.Types.ObjectId,
     ref: 'Measurement',
-    required: true,
   },
   quoteNumber: {
     type: String,
@@ -27,12 +26,56 @@ const quoteSchema = new Schema<IQuote>({
     enum: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired'],
     default: 'draft',
   },
+  propertyAddress: String,
+  propertyCoordinates: {
+    lat: Number,
+    lng: Number,
+  },
+  propertyPolygon: [{
+    lat: Number,
+    lng: Number,
+  }],
+  measurements: {
+    lot: {
+      area: Number,
+      perimeter: Number,
+      polygon: [{
+        lat: Number,
+        lng: Number
+      }]
+    },
+    lawn: {
+      area: Number,
+      perimeter: Number,
+      polygon: [{
+        lat: Number,
+        lng: Number
+      }]
+    },
+    house: {
+      area: Number,
+      perimeter: Number,
+      polygon: [{
+        lat: Number,
+        lng: Number
+      }]
+    },
+    driveway: {
+      area: Number,
+      perimeter: Number,
+      polygon: [{
+        lat: Number,
+        lng: Number
+      }]
+    }
+  },
   services: [{
     name: { type: String, required: true },
     description: String,
     area: { type: Number, required: true },
     pricePerUnit: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
+    frequency: String,
   }],
   subtotal: {
     type: Number,
@@ -58,10 +101,15 @@ const quoteSchema = new Schema<IQuote>({
   sentAt: Date,
   viewedAt: Date,
   respondedAt: Date,
+  metadata: {
+    mapUrl: String,
+    formDuration: Number,
+    submittedAt: Date,
+    formStatus: String,
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
   },
 }, {
   timestamps: true,

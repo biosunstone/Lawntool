@@ -227,15 +227,47 @@ export interface IQuote {
   _id?: Types.ObjectId;
   businessId: Types.ObjectId;
   customerId: Types.ObjectId;
-  measurementId: Types.ObjectId;
+  measurementId?: Types.ObjectId;
   quoteNumber: string;
   status: QuoteStatus;
+  propertyAddress?: string;
+  propertyCoordinates?: {
+    lat: number;
+    lng: number;
+  };
+  propertyPolygon?: Array<{
+    lat: number;
+    lng: number;
+  }>;
+  measurements?: {
+    lot?: {
+      area: number;
+      perimeter: number;
+      polygon: Array<{ lat: number; lng: number }>;
+    };
+    lawn?: {
+      area: number;
+      perimeter: number;
+      polygon?: Array<{ lat: number; lng: number }>;
+    };
+    house?: {
+      area: number;
+      perimeter: number;
+      polygon: Array<{ lat: number; lng: number }>;
+    };
+    driveway?: {
+      area: number;
+      perimeter: number;
+      polygon: Array<{ lat: number; lng: number }>;
+    };
+  };
   services: Array<{
     name: string;
     description?: string;
     area: number;
     pricePerUnit: number;
     totalPrice: number;
+    frequency?: string;
   }>;
   subtotal: number;
   tax: number;
@@ -246,7 +278,13 @@ export interface IQuote {
   sentAt?: Date;
   viewedAt?: Date;
   respondedAt?: Date;
-  createdBy: Types.ObjectId;
+  metadata?: {
+    mapUrl?: string;
+    formDuration?: number;
+    submittedAt?: Date;
+    formStatus?: string;
+  };
+  createdBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -269,8 +307,36 @@ export interface ICustomer {
       lat: number;
       lng: number;
     };
+    polygon?: Array<{
+      lat: number;
+      lng: number;
+    }>;
+    measurements?: {
+      lot?: {
+        area: number;
+        perimeter: number;
+        polygon: Array<{ lat: number; lng: number }>;
+      };
+      lawn?: {
+        area: number;
+        perimeter: number;
+        polygon?: Array<{ lat: number; lng: number }>;
+      };
+      house?: {
+        area: number;
+        perimeter: number;
+        polygon: Array<{ lat: number; lng: number }>;
+      };
+      driveway?: {
+        area: number;
+        perimeter: number;
+        polygon: Array<{ lat: number; lng: number }>;
+      };
+    };
+    isPrimary?: boolean;
     notes?: string;
   }>;
+  source?: string;
   tags?: string[];
   notes?: string;
   status: "active" | "inactive" | "archived";
@@ -278,6 +344,8 @@ export interface ICustomer {
     source?: string;
     referral?: string;
     customFields?: Record<string, any>;
+    firstQuoteDate?: Date;
+    formDuration?: number;
   };
   archivedAt?: Date;
   measurementCount: number;
