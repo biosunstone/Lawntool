@@ -79,40 +79,40 @@ export default function MeasurementResults({ measurements, isLoading, onMeasurem
     {
       icon: Trees,
       label: 'Total Lawn Area',
-      value: currentMeasurements.lawn.total,
+      value: currentMeasurements.lawn?.total || 0,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
       breakdown: [
-        { label: 'Front Yard', value: currentMeasurements.lawn.frontYard },
-        { label: 'Back Yard', value: currentMeasurements.lawn.backYard },
-        { label: 'Side Yard', value: currentMeasurements.lawn.sideYard },
+        { label: 'Front Yard', value: currentMeasurements.lawn?.frontYard || 0 },
+        { label: 'Back Yard', value: currentMeasurements.lawn?.backYard || 0 },
+        { label: 'Side Yard', value: currentMeasurements.lawn?.sideYard || 0 },
       ]
     },
     {
       icon: Car,
       label: 'Driveway',
-      value: currentMeasurements.driveway,
+      value: currentMeasurements.driveway || 0,
       color: 'text-gray-600',
       bgColor: 'bg-gray-100',
     },
     {
       icon: Square,
       label: 'Sidewalk',
-      value: currentMeasurements.sidewalk,
+      value: currentMeasurements.sidewalk || 0,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
       icon: Building,
       label: 'Building',
-      value: currentMeasurements.building,
+      value: currentMeasurements.building || 0,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
     },
     {
       icon: Home,
       label: 'Total Property',
-      value: currentMeasurements.totalArea,
+      value: currentMeasurements.totalArea || 0,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
     },
@@ -142,7 +142,7 @@ export default function MeasurementResults({ measurements, isLoading, onMeasurem
             Total Property: {formatArea(currentMeasurements.totalArea)}
           </p>
           <p className="text-sm text-primary/80 mt-1">
-            Perimeter: {currentMeasurements.perimeter.toLocaleString()} linear ft
+            Perimeter: {(currentMeasurements.perimeter || 0).toLocaleString()} linear ft
           </p>
         </div>
         
@@ -204,15 +204,15 @@ export default function MeasurementResults({ measurements, isLoading, onMeasurem
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-blue-700">Coverage Area</p>
-              <p className="font-semibold text-blue-900">{currentMeasurements.lawn.total.toLocaleString()} sq ft</p>
+              <p className="font-semibold text-blue-900">{(currentMeasurements.lawn?.total || 0).toLocaleString()} sq ft</p>
             </div>
             <div>
               <p className="text-blue-700">Fertilizer Needed</p>
-              <p className="font-semibold text-blue-900">{Math.ceil(currentMeasurements.lawn.total / 5000)} bags per application</p>
+              <p className="font-semibold text-blue-900">{Math.ceil((currentMeasurements.lawn?.total || 0) / 5000)} bags per application</p>
             </div>
             <div>
               <p className="text-blue-700">Annual Cost Estimate</p>
-              <p className="font-semibold text-blue-900">${Math.ceil(currentMeasurements.lawn.total / 5000) * 4 * 25}</p>
+              <p className="font-semibold text-blue-900">${Math.ceil((currentMeasurements.lawn?.total || 0) / 5000) * 4 * 25}</p>
             </div>
           </div>
         </div>

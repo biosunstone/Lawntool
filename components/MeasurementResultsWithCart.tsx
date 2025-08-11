@@ -89,22 +89,22 @@ export default function MeasurementResultsWithCart({
 
     switch(serviceType) {
       case 'lawn':
-        area = currentMeasurements.lawn.total
+        area = currentMeasurements.lawn?.total || 0
         name = 'Lawn Mowing & Treatment'
         description = `Complete lawn care service for ${formatArea(area)}`
         break
       case 'driveway':
-        area = currentMeasurements.driveway
+        area = currentMeasurements.driveway || 0
         name = 'Driveway Sealing'
         description = `Professional driveway sealing for ${formatArea(area)}`
         break
       case 'sidewalk':
-        area = currentMeasurements.sidewalk
+        area = currentMeasurements.sidewalk || 0
         name = 'Sidewalk Cleaning'
         description = `Power washing and cleaning for ${formatArea(area)}`
         break
       case 'building':
-        area = currentMeasurements.building
+        area = currentMeasurements.building || 0
         name = 'Building Exterior Service'
         description = `Exterior maintenance for ${formatArea(area)}`
         break
@@ -151,48 +151,48 @@ export default function MeasurementResultsWithCart({
     {
       icon: Trees,
       label: 'Total Lawn Area',
-      value: currentMeasurements.lawn.total,
+      value: currentMeasurements.lawn?.total || 0,
       serviceType: 'lawn' as const,
-      price: currentMeasurements.lawn.total * DEFAULT_PRICING.lawn,
+      price: (currentMeasurements.lawn?.total || 0) * DEFAULT_PRICING.lawn,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
       breakdown: [
-        { label: 'Front Yard', value: currentMeasurements.lawn.frontYard },
-        { label: 'Back Yard', value: currentMeasurements.lawn.backYard },
-        { label: 'Side Yard', value: currentMeasurements.lawn.sideYard },
+        { label: 'Front Yard', value: currentMeasurements.lawn?.frontYard || 0 },
+        { label: 'Back Yard', value: currentMeasurements.lawn?.backYard || 0 },
+        { label: 'Side Yard', value: currentMeasurements.lawn?.sideYard || 0 },
       ]
     },
     {
       icon: Car,
       label: 'Driveway',
-      value: currentMeasurements.driveway,
+      value: currentMeasurements.driveway || 0,
       serviceType: 'driveway' as const,
-      price: currentMeasurements.driveway * DEFAULT_PRICING.driveway,
+      price: (currentMeasurements.driveway || 0) * DEFAULT_PRICING.driveway,
       color: 'text-gray-600',
       bgColor: 'bg-gray-100',
     },
     {
       icon: Square,
       label: 'Sidewalk',
-      value: currentMeasurements.sidewalk,
+      value: currentMeasurements.sidewalk || 0,
       serviceType: 'sidewalk' as const,
-      price: currentMeasurements.sidewalk * DEFAULT_PRICING.sidewalk,
+      price: (currentMeasurements.sidewalk || 0) * DEFAULT_PRICING.sidewalk,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
       icon: Building,
       label: 'Building',
-      value: currentMeasurements.building,
+      value: currentMeasurements.building || 0,
       serviceType: 'building' as const,
-      price: currentMeasurements.building * DEFAULT_PRICING.building,
+      price: (currentMeasurements.building || 0) * DEFAULT_PRICING.building,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
     },
     {
       icon: Home,
       label: 'Total Property',
-      value: currentMeasurements.totalArea,
+      value: currentMeasurements.totalArea || 0,
       serviceType: null,
       price: 0,
       color: 'text-orange-600',
@@ -221,10 +221,10 @@ export default function MeasurementResultsWithCart({
         <p className="text-gray-600 mb-2">{measurements.address}</p>
         <div className="mb-6 p-3 bg-primary/10 rounded-lg inline-block">
           <p className="text-lg font-semibold text-primary">
-            Total Property: {formatArea(currentMeasurements.totalArea)}
+            Total Property: {formatArea(currentMeasurements.totalArea || 0)}
           </p>
           <p className="text-sm text-primary/80 mt-1">
-            Perimeter: {currentMeasurements.perimeter.toLocaleString()} linear ft
+            Perimeter: {(currentMeasurements.perimeter || 0).toLocaleString()} linear ft
           </p>
         </div>
         

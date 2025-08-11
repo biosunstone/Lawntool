@@ -161,14 +161,21 @@ export function calculateMeasurements(boundaries: PropertyBoundaries): Measureme
 }
 
 // Format area to include acres for large properties
-export function formatArea(squareFeet: number): string {
-  const sqFtFormatted = squareFeet.toLocaleString() + ' sq ft'
+export function formatArea(squareFeet: number | undefined | null): string {
+  // Handle undefined, null, or NaN values
+  if (squareFeet === undefined || squareFeet === null || isNaN(squareFeet) || !isFinite(squareFeet)) {
+    return '0 sq ft'
+  }
+  
+  // Ensure we have a valid number
+  const safeSquareFeet = Math.max(0, squareFeet)
+  const sqFtFormatted = safeSquareFeet.toLocaleString() + ' sq ft'
   
   // Convert to acres (1 acre = 43,560 sq ft)
-  const acres = squareFeet / 43560
+  const acres = safeSquareFeet / 43560
   
   // Always show acres for properties over 2000 sq ft
-  if (squareFeet < 2000) {
+  if (safeSquareFeet < 2000) {
     return sqFtFormatted
   }
   
@@ -194,7 +201,7 @@ export function formatArea(squareFeet: number): string {
     }
   } else if (acres < 0.875) {
     // Around 3/4 acre
-    if (Math.abs(acres - 0.75) < 0.03) {
+    if (Math.abs(acres - 0.75) < 0.01) {
       acreString = '¾ acre'
     } else {
       acreString = `${acres.toFixed(2)} acres`

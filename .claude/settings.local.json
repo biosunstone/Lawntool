@@ -33,7 +33,8 @@
       "Bash(awk:*)",
       "Bash(grep:*)",
       "Bash(sed:*)",
-      "Bash(npx prettier:*)"
+      "Bash(npx prettier:*)",
+      "Bash(timeout 180s npm run build)"
     ],
     "deny": []
   }
