@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { GoogleMap, Polygon, Polyline, DrawingManager, useLoadScript, Marker } from '@react-google-maps/api'
 import { Coordinate } from '@/types/manualSelection'
 import { 
@@ -75,24 +75,42 @@ export default function MosquitoMap({
     }
   }, [isLoaded])
   
-  // Map options
-  const mapOptions: google.maps.MapOptions = {
-    zoom: 20,
-    mapTypeId: showHistorical ? 'satellite' : 'hybrid',
-    tilt: 0,
-    disableDefaultUI: false,
-    zoomControl: true,
-    mapTypeControl: true,
-    scaleControl: true,
-    streetViewControl: false,
-    rotateControl: false,
-    fullscreenControl: true,
-    clickableIcons: false,
-    mapTypeControlOptions: {
-      mapTypeIds: ['hybrid', 'satellite', 'roadmap'],
-      position: google.maps.ControlPosition.TOP_RIGHT
+  // Map options - only define when Google Maps is loaded
+  const mapOptions = useMemo(() => {
+    if (!isLoaded || typeof google === 'undefined') {
+      return {
+        zoom: 20,
+        mapTypeId: showHistorical ? 'satellite' : 'hybrid',
+        tilt: 0,
+        disableDefaultUI: false,
+        zoomControl: true,
+        mapTypeControl: true,
+        scaleControl: true,
+        streetViewControl: false,
+        rotateControl: false,
+        fullscreenControl: true,
+        clickableIcons: false
+      }
     }
-  }
+    
+    return {
+      zoom: 20,
+      mapTypeId: showHistorical ? 'satellite' : 'hybrid',
+      tilt: 0,
+      disableDefaultUI: false,
+      zoomControl: true,
+      mapTypeControl: true,
+      scaleControl: true,
+      streetViewControl: false,
+      rotateControl: false,
+      fullscreenControl: true,
+      clickableIcons: false,
+      mapTypeControlOptions: {
+        mapTypeIds: ['hybrid', 'satellite', 'roadmap'],
+        position: google.maps.ControlPosition.TOP_RIGHT
+      }
+    }
+  }, [isLoaded, showHistorical])
   
   // Handle map load
   const onMapLoad = useCallback((map: google.maps.Map) => {
@@ -142,7 +160,7 @@ export default function MosquitoMap({
   
   // Start drawing based on mode
   const startDrawing = useCallback(() => {
-    if (!drawingManagerRef.current) return
+    if (!drawingManagerRef.current || !isLoaded || typeof google === 'undefined') return
     
     setIsDrawing(true)
     setVertices([])
@@ -172,7 +190,7 @@ export default function MosquitoMap({
     })
     
     drawingManagerRef.current.setDrawingMode(drawingMode)
-  }, [mode])
+  }, [mode, isLoaded])
   
   // Stop drawing
   const stopDrawing = useCallback(() => {
@@ -384,6 +402,8 @@ export default function MosquitoMap({
   
   // Render exclusion zones
   const renderExclusionZones = useCallback(() => {
+    if (!isLoaded || typeof google === 'undefined') return null
+    
     return exclusionZones.map(zone => (
       <React.Fragment key={zone.id}>
         {/* Base exclusion zone */}
@@ -433,7 +453,7 @@ export default function MosquitoMap({
         />
       </React.Fragment>
     ))
-  }, [exclusionZones])
+  }, [exclusionZones, isLoaded])
   
   // Keyboard shortcuts
   useEffect(() => {

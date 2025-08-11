@@ -1,15 +1,21 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Coordinate } from '@/types/manualSelection'
 import { WOODBINE_PROPERTY } from '@/lib/measurement/GoogleEarthPropertyData'
-import { Camera, MapPin, Maximize, Home, Trees, Download, Share2, Search, Loader2, X } from 'lucide-react'
+import { 
+  Camera, MapPin, Maximize, Home, Trees, Download, Share2, Search, 
+  Loader2, X, Layers, Settings, Database, ChevronRight, Eye, EyeOff
+} from 'lucide-react'
 import PropertyMeasurementBreakdown from '@/components/PropertyMeasurementBreakdown'
 import MosquitoControlMap from '@/components/mosquito/MosquitoControlMap'
 import { generatePropertyBoundaries, generateAreaBreakdown } from '@/lib/autoPropertyDetection'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import toast, { Toaster } from 'react-hot-toast'
 
-// Dynamic import to prevent SSR issues
+// Dynamic imports to prevent SSR issues
 const DroneViewPropertyMap = dynamic(() => import('@/components/DroneViewPropertyMap'), {
   ssr: false,
   loading: () => (
@@ -22,6 +28,22 @@ const DroneViewPropertyMap = dynamic(() => import('@/components/DroneViewPropert
   )
 })
 
+// Dynamic import of MosquitoMeasurementTool with polygon features
+const MosquitoMeasurementTool = dynamic(
+  () => import('@/components/mosquito/MosquitoMeasurementTool'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full bg-gray-900">
+        <div className="text-center">
+          <Layers className="w-8 h-8 text-gray-400 animate-pulse mx-auto mb-2" />
+          <p className="text-gray-400">Loading polygon tools...</p>
+        </div>
+      </div>
+    )
+  }
+)
+
 // Sample properties with different sizes and shapes
 const SAMPLE_PROPERTIES = [
   {
@@ -31,7 +53,8 @@ const SAMPLE_PROPERTIES = [
     type: 'Residential',
     size: '0.5 acres',
     center: WOODBINE_PROPERTY.center,
-    polygon: WOODBINE_PROPERTY.coordinates
+    polygon: WOODBINE_PROPERTY.coordinates,
+    businessId: 'sample-business-1'
   },
   {
     id: 'suburban',
@@ -45,7 +68,8 @@ const SAMPLE_PROPERTIES = [
       { lat: 43.7002, lng: -79.3997 },
       { lat: 43.6998, lng: -79.3997 },
       { lat: 43.6998, lng: -79.4003 }
-    ] as Coordinate[]
+    ] as Coordinate[],
+    businessId: 'sample-business-1'
   },
   {
     id: 'large-estate',
@@ -59,7 +83,8 @@ const SAMPLE_PROPERTIES = [
       { lat: 43.5895, lng: -79.6434 },
       { lat: 43.5885, lng: -79.6434 },
       { lat: 43.5885, lng: -79.6448 }
-    ] as Coordinate[]
+    ] as Coordinate[],
+    businessId: 'sample-business-2'
   },
   {
     id: 'commercial',
@@ -73,11 +98,15 @@ const SAMPLE_PROPERTIES = [
       { lat: 43.8365, lng: -79.4978 },
       { lat: 43.8357, lng: -79.4978 },
       { lat: 43.8357, lng: -79.4988 }
-    ] as Coordinate[]
+    ] as Coordinate[],
+    businessId: 'sample-business-3'
   }
 ]
 
 export default function TestDroneView() {
+  const { data: session }:any = useSession()
+  const router = useRouter()
+  
   const [selectedProperty, setSelectedProperty] = useState(SAMPLE_PROPERTIES[0])
   const [measurementData, setMeasurementData] = useState<any>(null)
   const [autoCenter, setAutoCenter] = useState(true)
@@ -86,7 +115,27 @@ export default function TestDroneView() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [showAddressSearch, setShowAddressSearch] = useState(false)
+  const [viewMode, setViewMode] = useState<'drone' | 'polygon'>('drone')
+  const [showPolygonTools, setShowPolygonTools] = useState(false)
+  const [savedPolygons, setSavedPolygons] = useState<any[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Load saved polygons from database
+  useEffect(() => {
+    loadSavedPolygons()
+  }, [])
+
+  const loadSavedPolygons = async () => {
+    try {
+      const response = await fetch('/api/admin/polygons?limit=10')
+      if (response.ok) {
+        const data = await response.json()
+        setSavedPolygons(data.polygons || [])
+      }
+    } catch (error) {
+      console.error('Failed to load saved polygons:', error)
+    }
+  }
 
   const handleMeasurementComplete = (data: any) => {
     setMeasurementData(data)
@@ -145,6 +194,7 @@ export default function TestDroneView() {
           center: center,
           polygon: propertyEstimate.polygon,
           autoDetected: true,
+          businessId: session?.user?.businessId || 'demo-business',
           measurements: {
             totalArea: propertyEstimate.estimatedSize,
             lawn: {
@@ -166,6 +216,7 @@ export default function TestDroneView() {
         setSearchAddress('')
         
         // Show a notification about auto-detection
+        toast.success('Property boundaries auto-detected! You can refine them using polygon tools.')
         console.log('Property auto-detected:', searchedProperty)
       } else {
         throw new Error('Could not find coordinates for this address')
@@ -176,7 +227,7 @@ export default function TestDroneView() {
     } finally {
       setIsSearching(false)
     }
-  }, [searchAddress])
+  }, [searchAddress, session])
   
   // Handle Enter key in search input
   const handleSearchKeyPress = useCallback((e: React.KeyboardEvent) => {
@@ -185,8 +236,41 @@ export default function TestDroneView() {
     }
   }, [handleAddressSearch, isSearching])
 
+  // Handle quote generation from polygon tool
+  const handleQuoteGenerated = (quoteId: string) => {
+    toast.success(`Quote generated successfully: ${quoteId}`)
+    console.log('Quote generated:', quoteId)
+  }
+
+  // Save polygon to database
+  const savePolygonToDatabase = async (polygonData: any) => {
+    try {
+      const response = await fetch('/api/admin/polygons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: selectedProperty.businessId || 'demo-business',
+          propertyAddress: selectedProperty.address,
+          geometries: polygonData.geometries,
+          exclusionZones: polygonData.exclusionZones || [],
+          type: 'mosquito'
+        })
+      })
+      
+      if (response.ok) {
+        toast.success('Polygon saved to database!')
+        loadSavedPolygons() // Refresh saved polygons list
+      }
+    } catch (error) {
+      console.error('Failed to save polygon:', error)
+      toast.error('Failed to save polygon')
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-900">
+      <Toaster position="top-right" />
+      
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700">
         <div className="px-6 py-4">
@@ -194,15 +278,41 @@ export default function TestDroneView() {
             <div className="flex items-center gap-4">
               <Camera className="w-8 h-8 text-blue-500" />
               <div>
-                <h1 className="text-2xl font-bold text-white">Drone View Property Measurement</h1>
+                <h1 className="text-2xl font-bold text-white">Advanced Drone View & Polygon Measurement</h1>
                 <p className="text-sm text-gray-400 mt-1">
-                  Ultra HD aerial imagery with intelligent zoom presets
+                  Ultra HD aerial imagery with intelligent polygon tools & templates
                 </p>
               </div>
             </div>
             
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
+              {/* View Mode Toggle */}
+              <div className="flex bg-gray-700 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('drone')}
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    viewMode === 'drone' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Camera className="w-4 h-4 inline mr-1" />
+                  Drone View
+                </button>
+                <button
+                  onClick={() => setViewMode('polygon')}
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                    viewMode === 'polygon' 
+                      ? 'bg-green-600 text-white' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-4 h-4 inline mr-1" />
+                  Polygon Tools
+                </button>
+              </div>
+              
               <button 
                 onClick={() => setShowAddressSearch(true)}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
@@ -210,10 +320,20 @@ export default function TestDroneView() {
                 <Search className="w-4 h-4" />
                 Search Address
               </button>
+              
+              <button
+                onClick={() => router.push('/admin/polygon-manager')}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              >
+                <Database className="w-4 h-4" />
+                Admin Panel
+              </button>
+              
               <button className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 Export
               </button>
+              
               <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
                 <Share2 className="w-4 h-4" />
                 Share
@@ -306,6 +426,7 @@ export default function TestDroneView() {
                     <li>• Generate property boundaries</li>
                     <li>• Calculate lawn, driveway & building areas</li>
                     <li>• Provide instant measurements</li>
+                    <li>• Enable polygon template selection</li>
                   </ul>
                 </div>
                 
@@ -339,13 +460,38 @@ export default function TestDroneView() {
       <div className="flex-1 flex">
         {/* Map Container */}
         <div className="flex-1 relative">
-          <DroneViewPropertyMap
-            propertyPolygon={selectedProperty.polygon}
-            center={selectedProperty.center}
-            address={selectedProperty.address}
-            onMeasurementComplete={handleMeasurementComplete}
-            autoCenter={autoCenter}
-          />
+          {viewMode === 'drone' ? (
+            <DroneViewPropertyMap
+              propertyPolygon={selectedProperty.polygon}
+              center={selectedProperty.center}
+              address={selectedProperty.address}
+              onMeasurementComplete={handleMeasurementComplete}
+              autoCenter={autoCenter}
+            />
+          ) : (
+            <MosquitoMeasurementTool
+              propertyId={selectedProperty.id}
+              businessId={selectedProperty.businessId || 'demo-business'}
+              address={selectedProperty.address}
+              center={selectedProperty.center}
+              onQuoteGenerated={handleQuoteGenerated}
+            />
+          )}
+          
+          {/* View Mode Indicator */}
+          <div className="absolute top-4 right-4 bg-gray-800 bg-opacity-90 rounded-lg px-3 py-2 flex items-center gap-2">
+            {viewMode === 'drone' ? (
+              <>
+                <Camera className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-white">Drone View Mode</span>
+              </>
+            ) : (
+              <>
+                <Layers className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-white">Polygon Tools Mode</span>
+              </>
+            )}
+          </div>
         </div>
         
         {/* Control Panel */}
@@ -378,7 +524,7 @@ export default function TestDroneView() {
                   </p>
                   {(selectedProperty as any).autoDetected && (
                     <p className="text-xs text-yellow-400 mt-1">
-                      💡 You can redraw boundaries for more accuracy
+                      💡 Switch to Polygon Tools mode for advanced editing
                     </p>
                   )}
                 </div>
@@ -433,11 +579,97 @@ export default function TestDroneView() {
                 </div>
                 {selectedProperty.id.startsWith('searched-') && (
                   <div className="pt-2 border-t border-gray-600">
-                    <span className="text-xs text-yellow-400">💡 Use the ruler tool to draw property boundaries</span>
+                    <span className="text-xs text-yellow-400">
+                      {viewMode === 'drone' 
+                        ? '💡 Switch to Polygon Tools mode for templates'
+                        : '🎨 Use polygon templates for quick shapes'}
+                    </span>
                   </div>
                 )}
               </div>
             </div>
+            
+            {/* Polygon Tools Info (when in polygon mode) */}
+            {viewMode === 'polygon' && (
+              <div className="bg-green-900 bg-opacity-30 rounded-lg p-4 border border-green-700">
+                <h3 className="text-sm font-medium text-green-300 mb-3 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Polygon Tools Active
+                </h3>
+                <div className="space-y-2 text-xs text-gray-300">
+                  <div className="flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 mt-0.5 text-green-400" />
+                    <span>Click "Polygon Templates" for pre-built shapes</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 mt-0.5 text-green-400" />
+                    <span>Use measurement modes to draw custom polygons</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 mt-0.5 text-green-400" />
+                    <span>Edit colors, names, and properties in the polygon editor</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 mt-0.5 text-green-400" />
+                    <span>Save polygons to database for later use</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => toast.success('Polygon data auto-saves to the admin panel')}
+                  className="mt-3 w-full px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                >
+                  View in Admin Panel
+                </button>
+              </div>
+            )}
+            
+            {/* Saved Polygons */}
+            {savedPolygons.length > 0 && (
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center justify-between">
+                  <span>Recent Polygons</span>
+                  <span className="text-xs text-gray-500">{savedPolygons.length} saved</span>
+                </h3>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {savedPolygons.slice(0, 5).map((polygon, idx) => (
+                    <div key={polygon.id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: polygon.geometries[0]?.color || '#22c55e' }}
+                        />
+                        <span className="text-gray-300 truncate max-w-[200px]">
+                          {polygon.propertyAddress}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const center = polygon.geometries[0]?.coordinates[0]
+                          if (center) {
+                            setSelectedProperty({
+                              ...selectedProperty,
+                              center,
+                              address: polygon.propertyAddress
+                            })
+                            setViewMode('polygon')
+                            toast.success('Loaded saved polygon')
+                          }
+                        }}
+                        className="text-blue-400 hover:text-blue-300"
+                      >
+                        <Eye className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => router.push('/admin/polygon-manager')}
+                  className="mt-2 w-full text-xs text-blue-400 hover:text-blue-300"
+                >
+                  View all in admin panel →
+                </button>
+              </div>
+            )}
             
             {/* Settings */}
             <div>
@@ -461,29 +693,42 @@ export default function TestDroneView() {
                     className="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
                   />
                 </label>
+                <label className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Show polygon tools</span>
+                  <input
+                    type="checkbox"
+                    checked={showPolygonTools}
+                    onChange={(e) => setShowPolygonTools(e.target.checked)}
+                    className="rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500"
+                  />
+                </label>
               </div>
             </div>
             
-            {/* Property Measurement Breakdown */}
-            <PropertyMeasurementBreakdown
-              propertyPolygon={selectedProperty.polygon}
-              center={selectedProperty.center}
-              address={selectedProperty.address}
-              onMeasurementComplete={(data) => {
-                console.log('Property breakdown:', data)
-              }}
-            />
+            {/* Property Measurement Breakdown (only in drone mode) */}
+            {viewMode === 'drone' && (
+              <PropertyMeasurementBreakdown
+                propertyPolygon={selectedProperty.polygon}
+                center={selectedProperty.center}
+                address={selectedProperty.address}
+                onMeasurementComplete={(data) => {
+                  console.log('Property breakdown:', data)
+                }}
+              />
+            )}
             
-            {/* Mosquito Control Analysis */}
-            <MosquitoControlMap
-              address={selectedProperty.address}
-              coordinates={selectedProperty.center}
-              propertySize={(selectedProperty as any).measurements ? 
-                (selectedProperty as any).measurements.totalArea / 43560 : 1}
-            />
+            {/* Mosquito Control Analysis (only in drone mode) */}
+            {viewMode === 'drone' && (
+              <MosquitoControlMap
+                address={selectedProperty.address}
+                coordinates={selectedProperty.center}
+                propertySize={(selectedProperty as any).measurements ? 
+                  (selectedProperty as any).measurements.totalArea / 43560 : 1}
+              />
+            )}
             
             {/* Basic Measurement Results */}
-            {measurementData && (
+            {measurementData && viewMode === 'drone' && (
               <div className="bg-blue-900 bg-opacity-30 rounded-lg p-4 border border-blue-700">
                 <h3 className="text-sm font-medium text-blue-300 mb-3">Basic Measurements</h3>
                 <div className="space-y-3">
@@ -516,31 +761,31 @@ export default function TestDroneView() {
                 <h3 className="text-sm font-medium text-gray-300 mb-3">Key Features</h3>
                 <div className="space-y-3 text-xs">
                   <div className="flex items-start gap-2">
-                    <Maximize className="w-4 h-4 text-blue-400 mt-0.5" />
+                    <Layers className="w-4 h-4 text-green-400 mt-0.5" />
                     <div>
-                      <div className="text-white font-medium">Smart Zoom Presets</div>
-                      <div className="text-gray-400">One-click views: Full Property, Structure Focus, Yard Detail</div>
+                      <div className="text-white font-medium">Polygon Templates</div>
+                      <div className="text-gray-400">Pre-built shapes: Rectangle, Circle, House Perimeter, Gardens</div>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Camera className="w-4 h-4 text-green-400 mt-0.5" />
+                    <Settings className="w-4 h-4 text-purple-400 mt-0.5" />
                     <div>
-                      <div className="text-white font-medium">Ultra HD Imagery</div>
-                      <div className="text-gray-400">Drone-quality resolution with visible property features</div>
+                      <div className="text-white font-medium">Advanced Editor</div>
+                      <div className="text-gray-400">Edit colors, names, visibility, lock status, reorder</div>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-yellow-400 mt-0.5" />
+                    <Database className="w-4 h-4 text-blue-400 mt-0.5" />
                     <div>
-                      <div className="text-white font-medium">Auto-Center & Frame</div>
-                      <div className="text-gray-400">Properties automatically centered with optimal zoom</div>
+                      <div className="text-white font-medium">Admin Panel</div>
+                      <div className="text-gray-400">Manage all polygons, export data, bulk operations</div>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Home className="w-4 h-4 text-purple-400 mt-0.5" />
+                    <Camera className="w-4 h-4 text-yellow-400 mt-0.5" />
                     <div>
-                      <div className="text-white font-medium">Historical Imagery</div>
-                      <div className="text-gray-400">View property changes over time with date selection</div>
+                      <div className="text-white font-medium">Dual View Modes</div>
+                      <div className="text-gray-400">Switch between drone imagery and polygon tools</div>
                     </div>
                   </div>
                 </div>
@@ -553,23 +798,27 @@ export default function TestDroneView() {
               <ol className="space-y-2 text-xs text-gray-400">
                 <li className="flex gap-2">
                   <span className="text-blue-400">1.</span>
-                  <span>Select a property from the dropdown or draw your own</span>
+                  <span>Search for an address or select a sample property</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-blue-400">2.</span>
-                  <span>Use zoom presets for instant views (Full, Structure, Yard)</span>
+                  <span>Toggle between Drone View and Polygon Tools modes</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-blue-400">3.</span>
-                  <span>Save custom views with the Save button</span>
+                  <span>In Polygon mode, use templates for quick shapes</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-blue-400">4.</span>
-                  <span>Select historical imagery to see seasonal changes</span>
+                  <span>Edit polygons with the advanced editor on the right</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-blue-400">5.</span>
-                  <span>Use smooth zoom controls for detailed inspection</span>
+                  <span>View all saved polygons in the Admin Panel</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-blue-400">6.</span>
+                  <span>Export polygon data as JSON from admin panel</span>
                 </li>
               </ol>
             </div>

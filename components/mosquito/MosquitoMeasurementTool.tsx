@@ -37,6 +37,8 @@ import toast from 'react-hot-toast'
 const MosquitoMap = dynamic(() => import('./MosquitoMap'), { ssr: false })
 const ExclusionZoneManager = dynamic(() => import('./ExclusionZoneManager'), { ssr: false })
 const CompliancePanel = dynamic(() => import('./CompliancePanel'), { ssr: false })
+const AdvancedPolygonEditor = dynamic(() => import('./AdvancedPolygonEditor'), { ssr: false })
+const PolygonTemplates = dynamic(() => import('./PolygonTemplates'), { ssr: false })
 
 interface MosquitoMeasurementToolProps {
   propertyId: string
@@ -54,6 +56,8 @@ interface Geometry {
   linearFeet: number
   locked: boolean
   visible: boolean
+  color?: string
+  opacity?: number
 }
 
 export default function MosquitoMeasurementTool({
@@ -100,6 +104,9 @@ export default function MosquitoMeasurementTool({
   const [isSaving, setIsSaving] = useState(false)
   const [isGeneratingQuote, setIsGeneratingQuote] = useState(false)
   
+  // Template states
+  const [showTemplates, setShowTemplates] = useState(false)
+  
   // Calculate total linear feet whenever geometries change
   useEffect(() => {
     const total = geometries
@@ -108,8 +115,38 @@ export default function MosquitoMeasurementTool({
     setTotalLinearFeet(total)
   }, [geometries])
   
+  // Auto-save geometries when they change (debounced)
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>()
+  useEffect(() => {
+    if (geometries.length > 0) {
+      // Clear previous timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+      
+      // Set new timeout for auto-save
+      autoSaveTimeoutRef.current = setTimeout(async () => {
+        console.log('Auto-saving geometries...')
+        await saveMeasurement()
+      }, 3000) // Auto-save after 3 seconds of no changes
+    }
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+    }
+  }, [geometries.length, totalLinearFeet]) // Only trigger on actual changes
+  
   // Handle measurement completion
   const handleMeasurementComplete = useCallback((measurement: LinearMeasurement, name?: string) => {
+    const typeColors = {
+      'lot_perimeter': '#22c55e',
+      'structure_perimeter': '#ef4444',
+      'custom_path': '#3b82f6',
+      'area_band': '#f59e0b'
+    }
+    
     const newGeometry: Geometry = {
       id: Math.random().toString(36).substr(2, 9),
       name: name || getDefaultName(mode),
@@ -117,7 +154,9 @@ export default function MosquitoMeasurementTool({
       coordinates: measurement.coordinates,
       linearFeet: measurement.linearFeet,
       locked: false,
-      visible: true
+      visible: true,
+      color: typeColors[mode],
+      opacity: 0.7
     }
     
     setGeometries(prev => [...prev, newGeometry])
@@ -166,6 +205,68 @@ export default function MosquitoMeasurementTool({
     ))
     saveToHistory('Rename geometry', { id: geometryId, newName })
   }, [])
+
+  // Handle geometry visibility toggle
+  const handleToggleVisibility = useCallback((geometryId: string) => {
+    setGeometries(prev => prev.map(g => 
+      g.id === geometryId ? { ...g, visible: !g.visible } : g
+    ))
+    saveToHistory('Toggle visibility', geometryId)
+  }, [])
+
+  // Handle geometry lock toggle
+  const handleToggleLock = useCallback((geometryId: string) => {
+    setGeometries(prev => prev.map(g => 
+      g.id === geometryId ? { ...g, locked: !g.locked } : g
+    ))
+    saveToHistory('Toggle lock', geometryId)
+  }, [])
+
+  // Handle geometry color change
+  const handleChangeColor = useCallback((geometryId: string, color: string) => {
+    setGeometries(prev => prev.map(g => 
+      g.id === geometryId ? { ...g, color } : g
+    ))
+    saveToHistory('Change color', { id: geometryId, color })
+  }, [])
+
+  // Handle geometry duplication
+  const handleDuplicateGeometry = useCallback((geometryId: string) => {
+    const geometry = geometries.find(g => g.id === geometryId)
+    if (!geometry) return
+
+    const duplicatedGeometry: Geometry = {
+      ...geometry,
+      id: Math.random().toString(36).substr(2, 9),
+      name: `${geometry.name} (Copy)`,
+      coordinates: geometry.coordinates.map(coord => ({
+        lat: coord.lat + 0.0001, // Slight offset
+        lng: coord.lng + 0.0001
+      }))
+    }
+
+    setGeometries(prev => [...prev, duplicatedGeometry])
+    saveToHistory('Duplicate geometry', duplicatedGeometry)
+    toast.success(`Duplicated ${geometry.name}`)
+  }, [geometries])
+
+  // Handle geometry reordering
+  const handleMoveGeometry = useCallback((geometryId: string, direction: 'up' | 'down') => {
+    setGeometries(prev => {
+      const currentIndex = prev.findIndex(g => g.id === geometryId)
+      if (currentIndex === -1) return prev
+
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+      if (newIndex < 0 || newIndex >= prev.length) return prev
+
+      const newGeometries = [...prev]
+      const [movedGeometry] = newGeometries.splice(currentIndex, 1)
+      newGeometries.splice(newIndex, 0, movedGeometry)
+      
+      return newGeometries
+    })
+    saveToHistory('Reorder geometry', { id: geometryId, direction })
+  }, [])
   
   // Handle exclusion zone management
   const handleAddExclusion = useCallback((zone: ExclusionZone) => {
@@ -178,6 +279,54 @@ export default function MosquitoMeasurementTool({
       calculateTreatmentBand()
     }
   }, [bandWidth])
+
+  // Handle template selection
+  const handleTemplateSelect = useCallback((template: any) => {
+    const newGeometry: Geometry = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: template.name,
+      type: 'custom_path', // Templates create custom paths
+      coordinates: template.coordinates,
+      linearFeet: calculateLinearFeet(template.coordinates),
+      locked: false,
+      visible: true,
+      color: template.color,
+      opacity: 0.7
+    }
+    
+    setGeometries(prev => [...prev, newGeometry])
+    saveToHistory('Add template', newGeometry)
+    toast.success(`Added ${template.name} template`)
+    setShowTemplates(false)
+  }, [])
+
+  // Calculate linear feet for coordinates
+  const calculateLinearFeet = (coordinates: Coordinate[]): number => {
+    if (!coordinates || coordinates.length < 2) return 0
+    
+    let total = 0
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      const p1 = coordinates[i]
+      const p2 = coordinates[i + 1]
+      const distance = getDistance(p1.lat, p1.lng, p2.lat, p2.lng)
+      total += distance
+    }
+    
+    return total * 3.28084 // Convert meters to feet
+  }
+
+  // Calculate distance between two points using Haversine formula
+  const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371000 // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+    return R * c
+  }
   
   const handleEditExclusion = useCallback((zoneId: string, updates: Partial<ExclusionZone>) => {
     setExclusionZones(prev => prev.map(z => 
@@ -312,29 +461,65 @@ export default function MosquitoMeasurementTool({
     setIsSaving(true)
     
     try {
-      const response = await fetch('/api/mosquito/measurements', {
+      // Save to admin polygons endpoint for persistence
+      const adminResponse = await fetch('/api/admin/polygons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          propertyId,
-          businessId,
-          address,
-          geometries,
-          exclusionZones,
-          bandWidth: bandMeasurement ? bandWidth : undefined,
-          obstacles,
-          imagerySource: {
-            date: imageryDate,
-            historical: showHistorical,
-            resolution: 0.3 // meters
-          }
+          businessId: businessId || 'demo-business',
+          propertyAddress: address,
+          geometries: geometries.map(g => ({
+            ...g,
+            linearFeet: g.linearFeet || calculateLinearFeet(g.coordinates)
+          })),
+          exclusionZones: exclusionZones || [],
+          type: 'mosquito'
         })
       })
       
-      const data = await response.json()
-      toast.success('Measurement saved successfully')
+      if (!adminResponse.ok) {
+        const errorData = await adminResponse.json()
+        console.error('Failed to save to admin polygons:', errorData)
+        toast.error(errorData.error || 'Failed to save polygon')
+        if (errorData.details) {
+          console.error('Error details:', errorData.details)
+        }
+        return null
+      } else {
+        const adminData = await adminResponse.json()
+        console.log('Saved to admin polygons:', adminData)
+        toast.success('Polygon saved successfully!')
+      }
       
-      return data.id
+      // Also try mosquito endpoint if it exists
+      try {
+        const response = await fetch('/api/mosquito/measurements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            propertyId,
+            businessId,
+            address,
+            geometries,
+            exclusionZones,
+            bandWidth: bandMeasurement ? bandWidth : undefined,
+            obstacles,
+            imagerySource: {
+              date: imageryDate,
+              historical: showHistorical,
+              resolution: 0.3 // meters
+            }
+          })
+        })
+        
+        const data = await response.json()
+        // Don't show duplicate success message
+        return data.id
+      } catch (mosquitoError) {
+        // If mosquito endpoint fails, that's okay - we saved to admin
+        console.log('Mosquito endpoint not available, saved to admin polygons')
+        return 'admin-saved-' + Date.now()
+      }
     } catch (error) {
       console.error('Failed to save measurement:', error)
       toast.error('Failed to save measurement')
@@ -566,7 +751,35 @@ export default function MosquitoMeasurementTool({
               />
             </button>
           </div>
+          
+          {/* Templates Button */}
+          <div className="mt-3 pt-3 border-t">
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className={`w-full flex items-center justify-center gap-2 p-2 rounded-lg transition-colors ${
+                showTemplates
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span className="text-sm">Polygon Templates</span>
+            </button>
+          </div>
         </div>
+        
+        {/* Polygon Templates Panel */}
+        {showTemplates && (
+          <div className="absolute top-4 left-80 z-10">
+            <PolygonTemplates
+              onSelectTemplate={handleTemplateSelect}
+              centerLat={center.lat}
+              centerLng={center.lng}
+              isVisible={showTemplates}
+              onClose={() => setShowTemplates(false)}
+            />
+          </div>
+        )}
         
         {/* Measurement Display */}
         <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-4">
@@ -622,15 +835,15 @@ export default function MosquitoMeasurementTool({
           <p className="text-sm text-gray-600">{address}</p>
         </div>
         
-        {/* Geometry List */}
+        {/* Advanced Polygon Editor */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium">Geometries</h3>
             <div className="flex gap-1">
               <button
                 onClick={undo}
                 disabled={historyIndex === 0}
                 className="p-1 text-gray-600 hover:bg-gray-100 rounded disabled:opacity-50"
+                title="Undo"
               >
                 <Undo className="w-4 h-4" />
               </button>
@@ -638,47 +851,26 @@ export default function MosquitoMeasurementTool({
                 onClick={redo}
                 disabled={historyIndex === history.length - 1}
                 className="p-1 text-gray-600 hover:bg-gray-100 rounded disabled:opacity-50"
+                title="Redo"
               >
                 <Redo className="w-4 h-4" />
               </button>
             </div>
           </div>
           
-          <div className="space-y-2">
-            {geometries.map(geometry => (
-              <div
-                key={geometry.id}
-                className={`p-3 rounded-lg border ${
-                  selectedGeometry === geometry.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{geometry.name}</p>
-                    <p className="text-xs text-gray-600">
-                      {geometry.linearFeet.toFixed(1)} ft
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleEditGeometry(geometry.id)}
-                      className="p-1 text-gray-600 hover:text-blue-600"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteGeometry(geometry.id)}
-                      className="p-1 text-gray-600 hover:text-red-600"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <AdvancedPolygonEditor
+            geometries={geometries}
+            selectedGeometry={selectedGeometry}
+            onSelect={setSelectedGeometry}
+            onEdit={handleEditGeometry}
+            onDelete={handleDeleteGeometry}
+            onToggleVisibility={handleToggleVisibility}
+            onToggleLock={handleToggleLock}
+            onRename={handleRenameGeometry}
+            onChangeColor={handleChangeColor}
+            onDuplicate={handleDuplicateGeometry}
+            onMove={handleMoveGeometry}
+          />
         </div>
         
         {/* Exclusion Zones */}
