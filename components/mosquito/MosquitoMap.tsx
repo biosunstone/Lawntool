@@ -410,7 +410,6 @@ export default function MosquitoMap({
               strokeColor: '#F87171',
               strokeOpacity: 0.5,
               strokeWeight: 1,
-              strokeStyle: 'dashed' as any,
               clickable: false,
               zIndex: 99
             }}
