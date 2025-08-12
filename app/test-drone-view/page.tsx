@@ -14,6 +14,9 @@ import { generatePropertyBoundaries, generateAreaBreakdown } from '@/lib/autoPro
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api'
+
+const libraries: ('drawing' | 'geometry' | 'places' | 'visualization')[] = ['drawing', 'geometry', 'places', 'visualization']
 
 // Dynamic imports to prevent SSR issues
 const DroneViewPropertyMap = dynamic(() => import('@/components/DroneViewPropertyMap'), {
@@ -111,19 +114,51 @@ export default function TestDroneView() {
   const [measurementData, setMeasurementData] = useState<any>(null)
   const [autoCenter, setAutoCenter] = useState(true)
   const [showFeatures, setShowFeatures] = useState(true)
-  const [searchAddress, setSearchAddress] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [showAddressSearch, setShowAddressSearch] = useState(false)
   const [viewMode, setViewMode] = useState<'drone' | 'polygon'>('drone')
   const [showPolygonTools, setShowPolygonTools] = useState(false)
   const [savedPolygons, setSavedPolygons] = useState<any[]>([])
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [searchAddress, setSearchAddress] = useState('')
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  
+  // Load Google Maps API
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: libraries
+  })
 
   // Load saved polygons from database
   useEffect(() => {
     loadSavedPolygons()
   }, [])
+  
+  // Autocomplete handlers
+  const onAutocompleteLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete
+    // Restrict to addresses in USA and Canada
+    autocomplete.setComponentRestrictions({ country: ['us', 'ca'] })
+    // Set types to address for better results
+    autocomplete.setTypes(['address'])
+  }, [])
+
+  const onPlaceChanged = useCallback(() => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace()
+      if (place.formatted_address) {
+        setSearchAddress(place.formatted_address)
+        
+        // Get coordinates if available
+        if (place.geometry?.location) {
+          const lat = place.geometry.location.lat()
+          const lng = place.geometry.location.lng()
+          handleAddressSelect(place.formatted_address, { lat, lng })
+        }
+      }
+    }
+  }, [session])
 
   const loadSavedPolygons = async () => {
     try {
@@ -150,91 +185,61 @@ export default function TestDroneView() {
     }
   }
   
-  // Handle address search
-  const handleAddressSearch = useCallback(async () => {
-    if (!searchAddress.trim()) {
-      setSearchError('Please enter an address')
-      return
-    }
-    
+  // Handle address selection from autocomplete
+  const handleAddressSelect = async (address: string, coordinates: { lat: number; lng: number }) => {
     setIsSearching(true)
     setSearchError(null)
     
     try {
-      // Call geocoding API
-      const response = await fetch('/api/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: searchAddress })
-      })
+      const center = { lat: coordinates.lat, lng: coordinates.lng }
       
-      if (!response.ok) {
-        throw new Error('Failed to geocode address')
-      }
+      // Generate automatic property boundaries
+      const propertyEstimate = generatePropertyBoundaries(center, address)
       
-      const data = await response.json()
+      // Generate area breakdown
+      const areaBreakdown = generateAreaBreakdown(propertyEstimate.polygon, propertyEstimate.propertyType)
       
-      if (data.coordinates && data.coordinates.lat && data.coordinates.lng) {
-        const center = { lat: data.coordinates.lat, lng: data.coordinates.lng }
-        const formattedAddress = data.formattedAddress || searchAddress
-        
-        // Generate automatic property boundaries
-        const propertyEstimate = generatePropertyBoundaries(center, formattedAddress)
-        
-        // Generate area breakdown
-        const areaBreakdown = generateAreaBreakdown(propertyEstimate.polygon, propertyEstimate.propertyType)
-        
-        // Create a new property from the search result with auto-generated boundaries
-        const searchedProperty = {
-          id: 'searched-' + Date.now(),
-          name: 'Auto-Detected Property',
-          address: formattedAddress,
-          type: propertyEstimate.propertyType === 'commercial' ? 'Commercial' : 'Residential',
-          size: `~${(propertyEstimate.estimatedSize / 1000).toFixed(1)}k sq ft`,
-          center: center,
-          polygon: propertyEstimate.polygon,
-          autoDetected: true,
-          businessId: session?.user?.businessId || 'demo-business',
-          measurements: {
-            totalArea: propertyEstimate.estimatedSize,
-            lawn: {
-              frontYard: areaBreakdown.lawn.front,
-              backYard: areaBreakdown.lawn.back,
-              sideYard: areaBreakdown.lawn.side,
-              total: areaBreakdown.lawn.front + areaBreakdown.lawn.back + areaBreakdown.lawn.side
-            },
-            driveway: areaBreakdown.driveway,
-            sidewalk: areaBreakdown.sidewalk,
-            building: areaBreakdown.building,
-            other: areaBreakdown.other
-          }
+      // Create a new property from the search result with auto-generated boundaries
+      const searchedProperty = {
+        id: 'searched-' + Date.now(),
+        name: 'Auto-Detected Property',
+        address: address,
+        type: propertyEstimate.propertyType === 'commercial' ? 'Commercial' : 'Residential',
+        size: `~${(propertyEstimate.estimatedSize / 1000).toFixed(1)}k sq ft`,
+        center: center,
+        polygon: propertyEstimate.polygon,
+        autoDetected: true,
+        businessId: session?.user?.businessId || 'demo-business',
+        measurements: {
+          totalArea: propertyEstimate.estimatedSize,
+          lawn: {
+            frontYard: areaBreakdown.lawn.front,
+            backYard: areaBreakdown.lawn.back,
+            sideYard: areaBreakdown.lawn.side,
+            total: areaBreakdown.lawn.front + areaBreakdown.lawn.back + areaBreakdown.lawn.side
+          },
+          driveway: areaBreakdown.driveway,
+          sidewalk: areaBreakdown.sidewalk,
+          building: areaBreakdown.building,
+          other: areaBreakdown.other
         }
-        
-        setSelectedProperty(searchedProperty)
-        setMeasurementData(searchedProperty.measurements)
-        setShowAddressSearch(false)
-        setSearchAddress('')
-        
-        // Show a notification about auto-detection
-        toast.success('Property boundaries auto-detected! You can refine them using polygon tools.')
-        console.log('Property auto-detected:', searchedProperty)
-      } else {
-        throw new Error('Could not find coordinates for this address')
       }
+      
+      setSelectedProperty(searchedProperty)
+      setMeasurementData(searchedProperty.measurements)
+      setShowAddressSearch(false)
+      setSearchAddress('')
+      
+      // Show a notification about auto-detection
+      toast.success('Property boundaries auto-detected! You can refine them using polygon tools.')
+      console.log('Property auto-detected:', searchedProperty)
     } catch (error) {
       console.error('Address search error:', error)
-      setSearchError(error instanceof Error ? error.message : 'Failed to search address')
+      setSearchError(error instanceof Error ? error.message : 'Failed to process address')
     } finally {
       setIsSearching(false)
     }
-  }, [searchAddress, session])
-  
-  // Handle Enter key in search input
-  const handleSearchKeyPress = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !isSearching) {
-      handleAddressSearch()
-    }
-  }, [handleAddressSearch, isSearching])
+  }
 
   // Handle quote generation from polygon tool
   const handleQuoteGenerated = (quoteId: string) => {
@@ -369,16 +374,64 @@ export default function TestDroneView() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Enter property address
                 </label>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchAddress}
-                  onChange={(e) => setSearchAddress(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
-                  placeholder="e.g., 123 Main St, Toronto, ON"
-                  className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  autoFocus
-                />
+                <style jsx global>{`
+                  .pac-container {
+                    background-color: rgb(31, 41, 55) !important;
+                    border: 1px solid rgb(55, 65, 81) !important;
+                    border-radius: 0.5rem !important;
+                    margin-top: 0.25rem !important;
+                    font-family: inherit !important;
+                    z-index: 9999 !important;
+                  }
+                  .pac-item {
+                    background-color: rgb(31, 41, 55) !important;
+                    color: white !important;
+                    border-top: 1px solid rgb(55, 65, 81) !important;
+                    padding: 0.5rem 1rem !important;
+                    cursor: pointer !important;
+                  }
+                  .pac-item:hover {
+                    background-color: rgb(55, 65, 81) !important;
+                  }
+                  .pac-item-selected, .pac-item-selected:hover {
+                    background-color: rgb(75, 85, 99) !important;
+                  }
+                  .pac-matched {
+                    font-weight: bold !important;
+                    color: rgb(34, 197, 94) !important;
+                  }
+                  .pac-item-query {
+                    color: rgb(209, 213, 219) !important;
+                  }
+                  .hdpi .pac-icon {
+                    background-image: none !important;
+                  }
+                `}</style>
+                {isLoaded ? (
+                  <Autocomplete
+                    onLoad={onAutocompleteLoad}
+                    onPlaceChanged={onPlaceChanged}
+                    options={{
+                      fields: ['formatted_address', 'geometry'],
+                      types: ['address']
+                    }}
+                  >
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={searchAddress}
+                      onChange={(e) => setSearchAddress(e.target.value)}
+                      placeholder="Start typing an address..."
+                      className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      autoFocus
+                    />
+                  </Autocomplete>
+                ) : (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-400">Loading...</span>
+                  </div>
+                )}
               </div>
               
               {searchError && (
@@ -386,36 +439,6 @@ export default function TestDroneView() {
                   {searchError}
                 </div>
               )}
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={handleAddressSearch}
-                  disabled={isSearching || !searchAddress.trim()}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4" />
-                      Search
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddressSearch(false)
-                    setSearchAddress('')
-                    setSearchError(null)
-                  }}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
               
               <div className="border-t border-gray-700 pt-4 space-y-3">
                 <div className="bg-blue-900 bg-opacity-30 p-3 rounded-lg border border-blue-700">
@@ -431,7 +454,7 @@ export default function TestDroneView() {
                 </div>
                 
                 <div>
-                  <p className="text-xs text-gray-400 mb-2">Quick examples:</p>
+                  <p className="text-xs text-gray-400 mb-2">Popular locations to try:</p>
                   <div className="flex flex-wrap gap-2">
                     {[
                       '6698 Castlederg Side Road, ON',
@@ -440,15 +463,17 @@ export default function TestDroneView() {
                       '1 Dundas St W, Toronto',
                       'Casa Loma, Toronto'
                     ].map((example) => (
-                      <button
+                      <div
                         key={example}
-                        onClick={() => setSearchAddress(example)}
-                        className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+                        className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded"
                       >
                         {example}
-                      </button>
+                      </div>
                     ))}
                   </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Start typing any address above and select from the dropdown suggestions
+                  </p>
                 </div>
               </div>
             </div>
